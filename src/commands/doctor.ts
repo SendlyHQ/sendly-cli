@@ -252,7 +252,7 @@ export default class Doctor extends BaseCommand {
     const token = getAuthToken();
 
     try {
-      const response = await fetch(`${baseUrl}/api/credits`, {
+      const response = await fetch(`${baseUrl}/api/v1/account/credits`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -262,8 +262,8 @@ export default class Doctor extends BaseCommand {
       });
 
       if (response.ok) {
-        const data = (await response.json()) as { balance?: number };
-        const balance = data.balance || 0;
+        const data = (await response.json()) as { balance?: string };
+        const balance = parseFloat(data.balance || "0");
 
         if (balance === 0) {
           this.addResult({

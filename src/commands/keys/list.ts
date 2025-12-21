@@ -12,14 +12,18 @@ import {
 
 interface ApiKey {
   id: string;
-  keyId: string;
   name: string;
-  keyPrefix: string;
+  prefix: string;
   type: "test" | "live";
+  scopes: string[];
   isActive: boolean;
   lastUsedAt?: string;
   createdAt: string;
-  revokedAt?: string;
+  expiresAt?: string;
+}
+
+interface KeysResponse {
+  keys: ApiKey[];
 }
 
 export default class KeysList extends AuthenticatedCommand {
@@ -35,7 +39,8 @@ export default class KeysList extends AuthenticatedCommand {
   };
 
   async run(): Promise<void> {
-    const keys = await apiClient.get<ApiKey[]>("/api/keys");
+    const response = await apiClient.get<KeysResponse>("/api/v1/account/keys");
+    const keys = response.keys;
 
     if (isJsonMode()) {
       json(keys);
@@ -59,15 +64,15 @@ export default class KeysList extends AuthenticatedCommand {
       },
       {
         header: "Key ID",
-        key: "keyId",
+        key: "id",
         width: 18,
-        formatter: (v) => colors.dim(String(v)),
+        formatter: (v) => colors.dim(String(v).slice(0, 16)),
       },
       {
         header: "Prefix",
-        key: "keyPrefix",
+        key: "prefix",
         width: 16,
-        formatter: (v) => colors.code(String(v) + "..."),
+        formatter: (v) => colors.code(String(v)),
       },
       {
         header: "Type",
@@ -87,7 +92,8 @@ export default class KeysList extends AuthenticatedCommand {
         header: "Last Used",
         key: "lastUsedAt",
         width: 12,
-        formatter: (v) => (v ? formatRelativeTime(String(v)) : colors.dim("never")),
+        formatter: (v) =>
+          v ? formatRelativeTime(String(v)) : colors.dim("never"),
       },
     ]);
   }

@@ -10,9 +10,15 @@ import {
 } from "../../lib/output.js";
 
 interface CreditsResponse {
-  balance: number;
-  lifetimeCredits: number;
-  reservedBalance: number;
+  balance: string;
+  reservedBalance: string;
+  recentTransactions?: Array<{
+    id: string;
+    amount: string;
+    type: string;
+    description: string;
+    createdAt: string;
+  }>;
 }
 
 export default class CreditsBalance extends AuthenticatedCommand {
@@ -28,7 +34,9 @@ export default class CreditsBalance extends AuthenticatedCommand {
   };
 
   async run(): Promise<void> {
-    const credits = await apiClient.get<CreditsResponse>("/api/credits");
+    const credits = await apiClient.get<CreditsResponse>(
+      "/api/v1/account/credits",
+    );
 
     if (isJsonMode()) {
       json(credits);
@@ -37,25 +45,31 @@ export default class CreditsBalance extends AuthenticatedCommand {
 
     header("Credit Balance");
 
-    const availableCredits = credits.balance - (credits.reservedBalance || 0);
+    const balance = parseFloat(credits.balance) || 0;
+    const reserved = parseFloat(credits.reservedBalance) || 0;
+    const availableCredits = balance - reserved;
 
     keyValue({
       Available: colors.primary(`${availableCredits.toLocaleString()} credits`),
-      Reserved: credits.reservedBalance
-        ? colors.warning(`${credits.reservedBalance.toLocaleString()} credits`)
-        : colors.dim("0 credits"),
-      "Total Balance": `${credits.balance.toLocaleString()} credits`,
-      "Lifetime Credits": colors.dim(`${credits.lifetimeCredits.toLocaleString()} credits`),
+      Reserved:
+        reserved > 0
+          ? colors.warning(`${reserved.toLocaleString()} credits`)
+          : colors.dim("0 credits"),
+      "Total Balance": `${balance.toLocaleString()} credits`,
     });
 
     console.log();
 
     // Show approximate message capacity
     const domesticMessages = Math.floor(availableCredits / 1);
-    const internationalMessages = Math.floor(availableCredits / 8);
+    const internationalMessages = Math.floor(availableCredits / 2);
 
     console.log(colors.dim("Estimated capacity:"));
-    console.log(`  ${colors.dim("US/Canada:")} ~${domesticMessages.toLocaleString()} messages`);
-    console.log(`  ${colors.dim("International:")} ~${internationalMessages.toLocaleString()} messages`);
+    console.log(
+      `  ${colors.dim("US/Canada:")} ~${domesticMessages.toLocaleString()} messages`,
+    );
+    console.log(
+      `  ${colors.dim("International:")} ~${internationalMessages.toLocaleString()} messages`,
+    );
   }
 }
