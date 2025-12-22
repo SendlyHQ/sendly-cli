@@ -107,7 +107,11 @@ export default class WebhooksRotateSecret extends AuthenticatedCommand {
       console.log(colors.dim(`The old secret will remain valid for ${result.gracePeriodHours} hours to allow for graceful migration.`));
 
     } catch (err) {
-      error("Failed to rotate secret", err instanceof Error ? err.message : String(err));
+      if (err instanceof Error) {
+        error(`Failed to rotate secret: ${err.message}`);
+      } else {
+        error(`Failed to rotate secret: ${String(err)}`);
+      }
       this.exit(1);
     }
   }

@@ -89,7 +89,11 @@ export default class WebhooksTest extends AuthenticatedCommand {
       if (err instanceof Error && err.message.includes("404")) {
         error(`Webhook not found: ${args.id}`);
       } else {
-        error("Failed to send test event", err instanceof Error ? err.message : String(err));
+        if (err instanceof Error) {
+          error(`Failed to send test event: ${err.message}`);
+        } else {
+          error(`Failed to send test event: ${String(err)}`);
+        }
       }
       this.exit(1);
     }

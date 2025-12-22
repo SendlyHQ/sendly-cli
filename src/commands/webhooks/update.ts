@@ -119,7 +119,11 @@ export default class WebhooksUpdate extends AuthenticatedCommand {
       if (err instanceof Error && err.message.includes("404")) {
         error(`Webhook not found: ${args.id}`);
       } else {
-        error("Failed to update webhook", err instanceof Error ? err.message : String(err));
+        if (err instanceof Error) {
+          error(`Failed to update webhook: ${err.message}`);
+        } else {
+          error(`Failed to update webhook: ${String(err)}`);
+        }
       }
       this.exit(1);
     }

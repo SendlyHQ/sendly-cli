@@ -56,28 +56,22 @@ export default class WebhooksGet extends AuthenticatedCommand {
     header(`Webhook ${webhook.id}`);
     console.log();
 
-    keyValue([
-      { key: "ID", value: webhook.id },
-      { key: "URL", value: webhook.url },
-      { key: "Events", value: webhook.events.join(", ") },
-      ...(webhook.description ? [{ key: "Description", value: webhook.description }] : []),
-      { 
-        key: "Status", 
-        value: webhook.isActive ? colors.success("active") : colors.warning("inactive") 
-      },
-      { 
-        key: "Circuit State", 
-        value: webhook.circuitState === "closed" 
-          ? colors.success("closed")
-          : webhook.circuitState === "open" 
-            ? colors.error("open")
-            : colors.warning("half_open")
-      },
-      { key: "Failure Count", value: String(webhook.failureCount) },
-      { key: "Secret Version", value: String(webhook.secretVersion) },
-      { key: "Created", value: formatDate(webhook.createdAt) },
-      { key: "Updated", value: formatDate(webhook.updatedAt) },
-    ]);
+    keyValue({
+      "ID": webhook.id,
+      "URL": webhook.url,
+      "Events": webhook.events.join(", "),
+      ...(webhook.description ? { "Description": webhook.description } : {}),
+      "Status": webhook.isActive ? colors.success("active") : colors.warning("inactive"),
+      "Circuit State": webhook.circuitState === "closed" 
+        ? colors.success("closed")
+        : webhook.circuitState === "open" 
+          ? colors.error("open")
+          : colors.warning("half_open"),
+      "Failure Count": String(webhook.failureCount),
+      "Secret Version": String(webhook.secretVersion),
+      "Created": formatDate(webhook.createdAt),
+      "Updated": formatDate(webhook.updatedAt),
+    });
 
     if (webhook.failureCount > 0) {
       console.log();

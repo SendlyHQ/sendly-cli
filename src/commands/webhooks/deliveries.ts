@@ -81,7 +81,13 @@ export default class WebhooksDeliveries extends AuthenticatedCommand {
     console.log(colors.dim(`Showing ${deliveries.length} deliveries for webhook ${args.id}`));
     console.log();
 
-    table(deliveries, [
+    // Add computed fields for better display
+    const deliveriesWithComputed = deliveries.map(d => ({
+      ...d,
+      attemptDisplay: `${d.attemptNumber}/${d.maxAttempts}`,
+    }));
+
+    table(deliveriesWithComputed, [
       {
         header: "Delivery ID",
         key: "id",
@@ -115,9 +121,8 @@ export default class WebhooksDeliveries extends AuthenticatedCommand {
       },
       {
         header: "Attempt",
-        key: "attemptNumber",
+        key: "attemptDisplay",
         width: 10,
-        formatter: (v, item) => `${v}/${item.maxAttempts}`,
       },
       {
         header: "Status Code",
@@ -141,7 +146,7 @@ export default class WebhooksDeliveries extends AuthenticatedCommand {
         header: "Created",
         key: "createdAt",
         width: 16,
-        formatter: (v) => formatDate(String(v), { short: true }),
+        formatter: (v) => formatDate(String(v)),
       },
     ]);
 
@@ -151,7 +156,7 @@ export default class WebhooksDeliveries extends AuthenticatedCommand {
       console.log();
       console.log(colors.error("Failed deliveries:"));
       failed.forEach(delivery => {
-        console.log(colors.dim(`  ${delivery.id.slice(0, 15)}...:`), delivery.errorMessage);
+        console.log(colors.dim(`  ${delivery.id.slice(0, 15)}...:`), delivery.errorMessage || "Unknown error");
       });
     }
 
