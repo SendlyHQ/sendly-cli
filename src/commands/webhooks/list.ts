@@ -33,7 +33,7 @@ export default class WebhooksList extends AuthenticatedCommand {
   };
 
   async run(): Promise<void> {
-    const webhooks = await apiClient.get<Webhook[]>("/api/webhooks");
+    const webhooks = await apiClient.get<Webhook[]>("/api/v1/webhooks");
 
     if (isJsonMode()) {
       json(webhooks);
@@ -44,7 +44,9 @@ export default class WebhooksList extends AuthenticatedCommand {
       info("No webhooks configured");
       console.log();
       console.log(`  Create one with ${colors.code("sendly webhooks create")}`);
-      console.log(`  Or test locally with ${colors.code("sendly webhooks listen")}`);
+      console.log(
+        `  Or test locally with ${colors.code("sendly webhooks listen")}`,
+      );
       return;
     }
 
