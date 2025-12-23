@@ -1,5 +1,14 @@
 # @sendly/cli
 
+## 3.0.2
+
+### Patch Changes
+
+- [`49ae989`](https://github.com/sendly-live/sendly/commit/49ae9892f7a4bc192ecb0d665f1f450f5d9208be) Thanks [@sendly-live](https://github.com/sendly-live)! - - Add retry logic with exponential backoff for 5xx server errors
+  - Fix User-Agent header to use dynamic version from package.json
+  - Remove dead EventSource code from webhook listener
+  - Fix README config path documentation
+
 ## 3.0.1
 
 ### Patch Changes
@@ -110,7 +119,7 @@
 
   **CLI Commands:**
   - `sendly webhooks create` - Create new webhooks
-  - `sendly webhooks list` - List all webhooks  
+  - `sendly webhooks list` - List all webhooks
   - `sendly webhooks get <id>` - Get webhook details
   - `sendly webhooks update <id>` - Update webhook configuration
   - `sendly webhooks delete <id>` - Remove webhooks
@@ -137,19 +146,19 @@
 - [`56fa46e`](https://github.com/sendly-live/sendly/commit/56fa46e95e0c3cded81e3c45a7f25e6bb8088e8c) Thanks [@sendly-live](https://github.com/sendly-live)! - Enhanced CLI with batch messaging, scheduled SMS, and improved developer experience.
 
   **✨ New Features:**
-  
+
   **Batch Messaging:**
   - `sendly sms batch --file messages.csv` - Send bulk SMS from CSV
   - `sendly sms batch --json messages.json` - Send from JSON file
   - Progress tracking and delivery status updates
   - Support for up to 1,000 messages per batch
-  
+
   **Scheduled Messages:**
   - `sendly sms schedule` - Schedule messages for future delivery
   - `sendly sms scheduled` - List all scheduled messages
   - `sendly sms cancel <id>` - Cancel scheduled messages
   - Timezone support for accurate delivery timing
-  
+
   **Enhanced Developer Experience:**
   - `sendly doctor` - Comprehensive system diagnostics
   - `sendly logs tail` - Real-time log streaming
