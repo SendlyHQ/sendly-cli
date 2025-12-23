@@ -1,5 +1,25 @@
 # @sendly/cli
 
+## 3.0.3
+
+### Patch Changes
+
+- [`2082b3a`](https://github.com/sendly-live/sendly/commit/2082b3a30c605529aa8f891c0d13c5169ce4db00) Thanks [@sendly-live](https://github.com/sendly-live)! - ## Bug Fixes
+  - **Webhook commands**: Fixed snake_case field name handling to match API responses (`is_active`, `circuit_state`, `failure_count`, `created_at`)
+  - **Keys commands**: Fixed `keys create` and `keys revoke` to use correct CLI API endpoints (`/api/v1/account/keys`)
+  - **Credits history**: Fixed authentication by using CLI API endpoint (`/api/v1/credits/transactions`)
+  - **Whoami**: Changed confusing "Environment test" to clearer "API Mode: test (sandbox)" display
+
+  ## New Features
+  - **`sendly status`**: Dashboard command showing account info, credits, resources, and recent messages at a glance
+  - **`sendly send`**: Shortcut for `sendly sms send` - quickly send SMS without typing the full command
+  - **Command suggestions**: Typo detection with "Did you mean?" suggestions (e.g., `sendly statsu` → `sendly status`)
+
+  ## Developer Experience
+  - Better error messages with actionable suggestions
+  - Consistent field naming across all commands
+  - Improved command discovery with shortcuts
+
 ## 3.0.2
 
 ### Patch Changes
