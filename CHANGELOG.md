@@ -1,5 +1,83 @@
 # @sendly/cli
 
+## 3.0.0
+
+### Major Changes
+
+- **Complete CLI Authentication System**: Implements enterprise-grade CLI authentication with OAuth device flow and secure onboarding.
+
+### ✨ New Features
+
+**CLI Authentication System:**
+- OAuth device flow for secure browser-based authentication  
+- CLI session tokens with 7-day expiration
+- Progressive permission system (CLI sessions → API keys)
+- CLI-first onboarding with strict collision detection
+
+**Developer Experience:**
+- `sendly login` - Secure browser-based authentication
+- `sendly onboarding --dev-mode` - Quick development setup
+- Automatic API key creation for immediate productivity
+- Clear error messages and upgrade paths
+
+**Security & Protection:**
+- CLI sessions limited to test SMS numbers only
+- Strict blocking prevents duplicate onboarding attempts  
+- Test SMS sandbox (`+15550001234`, etc.) for development
+- Real SMS requires business verification and live API keys
+
+### 🛠 Technical Implementation
+
+**Authentication Architecture:**
+- Dual authentication: Clerk sessions (UI) + CLI tokens (CLI)
+- CLI tokens: `cli_` prefix with base64-encoded JWT payload
+- API key compatibility maintained (`sk_test_` / `sk_live_`)
+- Enhanced middleware supporting both authentication methods
+
+**API Endpoints:**
+- `POST /api/cli/auth/device` - Initiate device authorization
+- `GET /api/cli/auth/validate-code` - Validate device codes  
+- `POST /api/cli/auth/verify` - User authorization
+- `POST /api/cli/auth/token` - Token exchange
+- `POST /api/cli/quick-start` - Development environment setup
+
+### 🧪 Comprehensive Testing
+
+**Test Suite (431+ test cases):**
+- Unit tests for CLI token validation
+- Integration tests for OAuth device flow
+- Edge case testing (race conditions, malicious inputs)
+- SMS protection verification
+- Manual testing scripts for end-to-end flows
+
+### 🚨 Breaking Changes
+
+- CLI now requires authentication before use
+- Previous unauthenticated CLI usage no longer supported
+- `sendly login` must be run before other commands
+
+### ⚡ Migration Guide
+
+**For existing users:**
+- Run `sendly login` to authenticate your CLI
+- Your existing API keys continue to work unchanged
+- Use `sendly onboarding --dev-mode` for quick development setup
+
+**For new users:**
+- `sendly login` for authentication
+- `sendly onboarding --dev-mode` for instant development setup
+- Automatic guidance to production verification when needed
+
+### 📈 Benefits
+
+- **Faster developer onboarding** - 2 minutes to production-ready development
+- **Enhanced security** - No more API key copy-paste from browser
+- **Better UX** - Progressive permissions with clear upgrade paths
+- **Safer testing** - Automatic test SMS protection
+- **Production ready** - Enterprise-grade authentication flow
+
+This release establishes Sendly CLI as a **world-class developer tool** with security, usability, and scalability at its core.
+
 ## 2.3.0
 
 ### Minor Changes
