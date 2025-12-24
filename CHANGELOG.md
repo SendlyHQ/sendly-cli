@@ -1,5 +1,28 @@
 # @sendly/cli
 
+## 3.2.0
+
+### Minor Changes
+
+- ## Security Improvements
+  - **CLI Authentication**: Implemented two-code device flow for secure browser-based login
+    - `deviceCode`: 32-character hex code used in URL to identify the session
+    - `userCode`: 8-character human-readable code displayed only in terminal
+    - This prevents verification code exposure through URL sharing/screenshots
+  - **CLI Session Scopes**: Added full SMS permissions to CLI session tokens (`sms:send`, `sms:read`, `sms:schedule`)
+
+- ## Bug Fixes
+  - **sms batch**: Fixed "Queued: undefined" display when API doesn't return queued count
+  - **sms schedule**: Fixed time validation to enforce Telnyx's actual limits:
+    - Minimum: 5 minutes in the future (was incorrectly 1 minute)
+    - Maximum: 5 days in the future (was incorrectly 7 days)
+  - **login**: Fixed duplicate error messages appearing on failed login attempts
+
+- ## Backend Improvements
+  - **Scheduled Message Sync**: Added Supabase cron job to automatically update stale scheduled messages
+    - Runs every 5 minutes to catch messages that missed webhook status updates
+    - Prevents scheduled messages from being stuck in "scheduled" status indefinitely
+
 ## 3.1.1
 
 ### Patch Changes
