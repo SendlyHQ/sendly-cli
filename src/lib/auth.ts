@@ -16,7 +16,7 @@ import {
 } from "./config.js";
 import { colors, spinner } from "./output.js";
 
-const DEVICE_CODE_LENGTH = 8;
+const USER_CODE_LENGTH = 8;
 const POLL_INTERVAL = 2000; // 2 seconds
 const MAX_POLL_ATTEMPTS = 150; // 5 minutes max
 
@@ -37,20 +37,23 @@ export interface TokenResponse {
 }
 
 /**
- * Generate a device code for browser-based authentication
+ * Generate a long random device code for URL (session identifier)
+ * This goes in the URL and identifies which CLI session is waiting
  */
 export function generateDeviceCode(): string {
-  return crypto.randomBytes(4).toString("hex").toUpperCase();
+  return crypto.randomBytes(16).toString("hex"); // 32 chars, not guessable
 }
 
 /**
- * Generate a secure device code for the auth flow
+ * Generate a short human-readable user code for terminal display
+ * This is what the user types to prove they have terminal access
+ * Uses characters that are easy to read and type (no 0/O, 1/I/L confusion)
  */
-export function generateSecureCode(): string {
+export function generateUserCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude confusing chars
   let code = "";
-  const bytes = crypto.randomBytes(DEVICE_CODE_LENGTH);
-  for (let i = 0; i < DEVICE_CODE_LENGTH; i++) {
+  const bytes = crypto.randomBytes(USER_CODE_LENGTH);
+  for (let i = 0; i < USER_CODE_LENGTH; i++) {
     code += chars[bytes[i] % chars.length];
   }
   return code;
@@ -58,17 +61,26 @@ export function generateSecureCode(): string {
 
 /**
  * Start the browser-based login flow
+ *
+ * Security model:
+ * - deviceCode: Long random token in URL, identifies CLI session (not secret)
+ * - userCode: Short code shown ONLY in terminal, proves user has terminal access
+ *
+ * The userCode is NEVER in the URL - this is critical for security.
+ * Anyone with the URL can't authorize without also seeing the terminal.
  */
 export async function browserLogin(): Promise<TokenResponse> {
   const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
-  const deviceCode = generateSecureCode();
-  const userCode = `${deviceCode.slice(0, 4)}-${deviceCode.slice(4)}`;
 
-  // Request device code from server
+  // Generate TWO SEPARATE codes for security
+  const deviceCode = generateDeviceCode(); // Long random, goes in URL
+  const userCode = generateUserCode(); // Short readable, shown in terminal only
+
+  // Request device code registration from server
   const response = await fetch(`${baseUrl}/api/cli/auth/device-code`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ deviceCode }),
+    body: JSON.stringify({ deviceCode, userCode }), // Send both to server
   });
 
   if (!response.ok) {
@@ -80,6 +92,9 @@ export async function browserLogin(): Promise<TokenResponse> {
 
   const data = (await response.json()) as DeviceCodeResponse;
 
+  // Format user code with hyphen for readability (e.g., "ABCD-EFGH")
+  const displayUserCode = `${userCode.slice(0, 4)}-${userCode.slice(4)}`;
+
   // Display instructions to user
   console.log();
   console.log(colors.bold("Login to Sendly"));
@@ -88,7 +103,7 @@ export async function browserLogin(): Promise<TokenResponse> {
   console.log(colors.primary(`  ${data.verificationUrl}`));
   console.log();
   console.log(`And enter this code:`);
-  console.log(colors.bold(colors.primary(`  ${userCode}`)));
+  console.log(colors.bold(colors.primary(`  ${displayUserCode}`)));
   console.log();
 
   // Try to open browser automatically
@@ -132,8 +147,9 @@ export async function browserLogin(): Promise<TokenResponse> {
 
         // Check if new user needs quick-start (only for CLI sessions)
         if (tokens.accessToken.startsWith("cli_")) {
-          const { shouldOfferQuickStart, offerQuickStart } = await import("./onboarding.js");
-          
+          const { shouldOfferQuickStart, offerQuickStart } =
+            await import("./onboarding.js");
+
           if (await shouldOfferQuickStart()) {
             await offerQuickStart();
           }
@@ -152,27 +168,21 @@ export async function browserLogin(): Promise<TokenResponse> {
       }
 
       if (errorData.error === "expired_token") {
-        spin.fail("Login request expired. Please try again.");
-        throw new Error("Login request expired");
+        spin.fail("Login request expired");
+        process.exit(1);
       }
 
       if (errorData.error === "access_denied") {
         spin.fail("Login was denied");
-        throw new Error("Login was denied");
+        process.exit(1);
       }
     } catch (error) {
-      if (
-        (error as Error).message.includes("expired") ||
-        (error as Error).message.includes("denied")
-      ) {
-        throw error;
-      }
       // Network error, continue polling
     }
   }
 
-  spin.fail("Login timed out. Please try again.");
-  throw new Error("Login timed out");
+  spin.fail("Login timed out");
+  process.exit(1);
 }
 
 /**

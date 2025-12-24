@@ -62,7 +62,8 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import {
-  generateSecureCode,
+  generateDeviceCode,
+  generateUserCode,
   apiKeyLogin,
   logout,
   checkAuth,
@@ -83,16 +84,32 @@ describe("Auth Module", () => {
     Object.keys(mockStore).forEach((key) => delete mockStore[key]);
   });
 
-  describe("generateSecureCode", () => {
+  describe("generateDeviceCode", () => {
+    it("generates 32-char hex code", () => {
+      const code = generateDeviceCode();
+      expect(code).toHaveLength(32);
+      expect(/^[a-f0-9]{32}$/.test(code)).toBe(true);
+    });
+
+    it("generates unique codes", () => {
+      const codes = new Set<string>();
+      for (let i = 0; i < 100; i++) {
+        codes.add(generateDeviceCode());
+      }
+      expect(codes.size).toBe(100);
+    });
+  });
+
+  describe("generateUserCode", () => {
     it("generates code of correct length", () => {
-      const code = generateSecureCode();
+      const code = generateUserCode();
       expect(code).toHaveLength(8);
     });
 
     it("generates unique codes", () => {
       const codes = new Set<string>();
       for (let i = 0; i < 100; i++) {
-        codes.add(generateSecureCode());
+        codes.add(generateUserCode());
       }
       // All 100 codes should be unique
       expect(codes.size).toBe(100);
@@ -101,7 +118,7 @@ describe("Auth Module", () => {
     it("only contains allowed characters", () => {
       const allowedChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       for (let i = 0; i < 50; i++) {
-        const code = generateSecureCode();
+        const code = generateUserCode();
         for (const char of code) {
           expect(allowedChars).toContain(char);
         }
@@ -113,7 +130,7 @@ describe("Auth Module", () => {
       // L is allowed since codes are uppercase-only
       const confusingChars = "0O1I";
       for (let i = 0; i < 100; i++) {
-        const code = generateSecureCode();
+        const code = generateUserCode();
         for (const char of code) {
           expect(confusingChars).not.toContain(char);
         }
