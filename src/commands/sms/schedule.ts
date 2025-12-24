@@ -80,11 +80,18 @@ export default class SmsSchedule extends AuthenticatedCommand {
       this.exit(1);
     }
 
-    // Check if scheduled time is in the future
-    if (scheduledDate.getTime() <= Date.now()) {
-      error("Scheduled time must be in the future", {
-        hint: "The scheduled time must be at least 1 minute from now",
-      });
+    // Check scheduling time constraints (Telnyx requires 5 min - 5 days)
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
+    const timeUntilSend = scheduledDate.getTime() - Date.now();
+
+    if (timeUntilSend < FIVE_MINUTES) {
+      error("Scheduled time must be at least 5 minutes from now");
+      this.exit(1);
+    }
+
+    if (timeUntilSend > FIVE_DAYS) {
+      error("Scheduled time must be within 5 days");
       this.exit(1);
     }
 
