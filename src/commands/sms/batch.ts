@@ -125,7 +125,7 @@ export default class SmsBatch extends AuthenticatedCommand {
       success("Batch sent", {
         "Batch ID": response.batchId,
         Total: response.total,
-        Queued: colors.success(String(response.queued)),
+        Queued: colors.success(String(response.queued ?? 0)),
         Failed:
           response.failed > 0 ? colors.error(String(response.failed)) : "0",
         "Credits Used": response.creditsUsed,
