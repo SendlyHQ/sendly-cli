@@ -1,5 +1,32 @@
 # @sendly/cli
 
+## 3.3.0
+
+### Minor Changes
+
+- ## Batch SMS Improvements
+  - **`--dry-run` flag**: Preview batch before sending with comprehensive validation
+    - Per-country breakdown with credit costs and pricing tiers
+    - Blocked messages with specific reasons (access denied, unsupported country)
+    - Messaging profile access check (domestic/international permissions)
+    - Credit balance validation
+    - API key type indicator (test/live)
+    - Duplicate detection warnings
+  - **Phone-only CSV support**: Use `--file phones.csv --text "message"` for CSVs with just phone numbers
+  - **Improved header detection**: Now recognizes "to", "phone", "number", "recipient", "mobile", "cell"
+  - **Real-time progress**: Server broadcasts batch progress via WebSocket/SSE
+
+- ## UI Batch Improvements
+  - **Preview button**: Click "Preview" to see batch analysis before sending
+  - **Country breakdown panel**: Shows per-country message counts and credit costs
+  - **Messaging profile status**: Displays your domestic/international sending permissions
+  - **Accurate credit calculation**: Uses actual international pricing tiers
+
+- ## API Changes
+  - **New endpoint**: `POST /api/v1/messages/batch/preview` - Validate batch without sending
+    - Scope required: `sms:read` (read-only, no send permission needed)
+    - Returns sendable/blocked counts, per-country breakdown, credit costs, access validation
+
 ## 3.2.0
 
 ### Minor Changes

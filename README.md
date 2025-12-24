@@ -91,11 +91,23 @@ sendly sms get msg_abc123
 #### Send Batch Messages
 
 ```bash
-# From a CSV file
-sendly sms batch --file recipients.csv --text "Hello {name}!"
+# From a JSON file
+sendly sms batch --file messages.json
+
+# From a CSV file (phone-only with shared text)
+sendly sms batch --file phones.csv --text "Your order is ready!"
 
 # Multiple recipients inline
 sendly sms batch --to "+15551234567,+15559876543" --text "Hello everyone!"
+
+# Preview before sending (dry run) - validates without sending
+sendly sms batch --file messages.json --dry-run
+
+# Dry run output includes:
+# - Per-country breakdown with credit costs
+# - Blocked messages and reasons
+# - Your messaging access (domestic/international)
+# - Credit balance check
 ```
 
 #### Schedule a Message
