@@ -247,6 +247,92 @@ class ApiClient {
   async delete<T>(path: string, requireAuth: boolean = true): Promise<T> {
     return this.request<T>("DELETE", path, { requireAuth });
   }
+
+  /**
+   * Upload a file using multipart/form-data
+   * Used for batch CSV uploads to Supabase storage
+   */
+  async uploadFile<T>(
+    path: string,
+    file: {
+      buffer: Buffer;
+      filename: string;
+      mimetype?: string;
+    },
+    requireAuth: boolean = true,
+  ): Promise<T> {
+    const maxRetries = getEffectiveValue("maxRetries");
+    const timeout = getEffectiveValue("timeout");
+    const url = `${this.getBaseUrl()}${path}`;
+
+    // Build multipart form data manually (Node.js compatible)
+    const boundary = `----FormBoundary${Date.now()}${Math.random().toString(36).substring(2)}`;
+    const mimetype = file.mimetype || "text/csv";
+
+    const header = Buffer.from(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="${file.filename}"\r\n` +
+        `Content-Type: ${mimetype}\r\n\r\n`,
+    );
+    const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
+    const body = Buffer.concat([header, file.buffer, footer]);
+
+    const headers: Record<string, string> = {
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+      Accept: "application/json",
+      "User-Agent": `@sendly/cli/${version}`,
+    };
+
+    if (requireAuth) {
+      const token = getAuthToken();
+      if (!token) {
+        throw new AuthenticationError();
+      }
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers,
+          body,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        this.updateRateLimitInfo(response.headers);
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          this.handleError(response.status, data);
+        }
+
+        return data as T;
+      } catch (error) {
+        lastError = error as Error;
+
+        if (!isRetryableError(error)) {
+          throw error;
+        }
+
+        if (attempt === maxRetries) {
+          throw error;
+        }
+
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+        await sleep(backoffMs);
+      }
+    }
+
+    throw lastError || new Error("Upload failed");
+  }
 }
 
 export const apiClient = new ApiClient();

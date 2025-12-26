@@ -1,43 +1,43 @@
 import { AuthenticatedCommand } from "../lib/base-command.js";
 import { apiClient } from "../lib/api-client.js";
-import {
-  header,
-  keyValue,
-  colors,
-  json,
-  divider,
-  isJsonMode,
-  formatRelativeTime,
-} from "../lib/output.js";
+import { colors, json, isJsonMode, formatRelativeTime } from "../lib/output.js";
 import { getConfigValue } from "../lib/config.js";
 
-interface StatusResponse {
+interface AccountStatusResponse {
   account: {
     email: string;
-    userId: string;
-    verified: boolean;
+    tier: "sandbox" | "international" | "domestic" | "global";
+    onboardingCompleted: boolean;
+  };
+  verification: {
+    type: string | null;
+    status: string | null;
+    isVerified: boolean;
+    alphaSenderId: string | null;
+    tollFreeNumber: string | null;
+    businessName: string | null;
+  } | null;
+  capabilities: {
+    canSendSandbox: boolean;
+    canSendInternational: boolean;
+    canSendDomestic: boolean;
+    regions: string[];
   };
   credits: {
     balance: number;
-    reserved: number;
-    available: number;
+    canSendLive: boolean;
   };
-  usage: {
-    messagesSentToday: number;
-    messagesSentThisMonth: number;
-    webhooksConfigured: number;
-    activeApiKeys: number;
+  keys: {
+    hasTestKey: boolean;
+    hasLiveKey: boolean;
+    totalActive: number;
   };
-  limits: {
-    dailyLimit: number;
-    monthlyLimit: number;
-    rateLimit: number;
-  };
+  nextSteps: string[];
 }
 
 export default class Status extends AuthenticatedCommand {
   static description =
-    "Show account status dashboard with credits, usage, and health";
+    "Show account status dashboard with credits, usage, and capabilities";
 
   static examples = [
     "<%= config.bin %> status",
@@ -49,7 +49,12 @@ export default class Status extends AuthenticatedCommand {
   };
 
   async run(): Promise<void> {
-    // Fetch all status data in parallel
+    // Fetch comprehensive account status
+    const status = await apiClient
+      .get<AccountStatusResponse>("/api/cli/account/status")
+      .catch(() => null);
+
+    // Fallback data if new endpoint not available
     const [credits, messages, webhooks, keys] = await Promise.all([
       apiClient
         .get<{
@@ -63,84 +68,161 @@ export default class Status extends AuthenticatedCommand {
           limit: 5,
         })
         .catch(() => ({ messages: [], total: 0 })),
-      apiClient
-        .get<any[]>("/api/v1/webhooks")
-        .catch(() => []),
+      apiClient.get<any[]>("/api/v1/webhooks").catch(() => []),
       apiClient
         .get<{ keys: any[] }>("/api/v1/account/keys")
         .catch(() => ({ keys: [] })),
     ]);
 
-    const email = getConfigValue("email") || "Unknown";
+    const email =
+      status?.account?.email || getConfigValue("email") || "Unknown";
     const apiMode = getConfigValue("environment") || "test";
 
     if (isJsonMode()) {
       json({
-        account: {
-          email,
-          apiMode,
-        },
-        credits: {
+        account: status?.account || { email, tier: "sandbox" },
+        verification: status?.verification || null,
+        capabilities: status?.capabilities || { regions: ["sandbox"] },
+        credits: status?.credits || {
           balance: credits.balance,
-          reserved: credits.reservedBalance,
-          available: credits.availableBalance,
+          canSendLive: false,
         },
-        usage: {
-          recentMessages: messages.total,
-          webhooksConfigured: webhooks.length,
-          activeApiKeys: keys.keys?.filter((k: any) => k.isActive).length || 0,
+        keys: status?.keys || {
+          hasTestKey: false,
+          hasLiveKey: false,
+          totalActive: keys.keys?.filter((k: any) => k.isActive).length || 0,
         },
+        nextSteps: status?.nextSteps || [],
       });
       return;
     }
 
     // Beautiful dashboard output
     console.log();
-    console.log(
-      colors.bold(colors.primary("  Sendly Status Dashboard")),
-    );
-    console.log(colors.dim("  " + "─".repeat(40)));
+    console.log(colors.bold(colors.primary("  Sendly Account Status")));
+    console.log(colors.dim("  " + "─".repeat(50)));
     console.log();
 
-    // Account Section
+    // Account & Tier Section
     console.log(colors.bold("  Account"));
-    console.log(`    ${colors.dim("Email:")}        ${email}`);
+    console.log(`    ${colors.dim("Email:")}         ${email}`);
+
+    // Show tier with color coding
+    const tier = status?.account?.tier || "sandbox";
+    const tierDisplay = {
+      sandbox: colors.warning("Sandbox") + colors.dim(" (test only)"),
+      international:
+        colors.primary("International") + colors.dim(" (48 countries)"),
+      domestic: colors.success("US & Canada") + colors.dim(" (toll-free)"),
+      global: colors.success("Global") + colors.dim(" (full access)"),
+    };
+    console.log(`    ${colors.dim("Tier:")}          ${tierDisplay[tier]}`);
+    console.log();
+
+    // Verification Section
+    if (status?.verification) {
+      console.log(colors.bold("  Verification"));
+      const v = status.verification;
+
+      // Status with color
+      const statusColors: Record<string, (s: string) => string> = {
+        approved: colors.success,
+        verified: colors.success,
+        pending: colors.warning,
+        in_progress: colors.warning,
+        rejected: colors.error,
+      };
+      const statusColor = statusColors[v.status || ""] || colors.dim;
+      console.log(
+        `    ${colors.dim("Status:")}        ${statusColor(v.status || "unknown")}`,
+      );
+
+      // Type
+      const typeLabels: Record<string, string> = {
+        toll_free: "Toll-Free (US/CA)",
+        international: "International",
+        both: "Global (US/CA + Intl)",
+      };
+      console.log(
+        `    ${colors.dim("Type:")}          ${typeLabels[v.type || ""] || v.type}`,
+      );
+
+      // Show sender ID or toll-free number
+      if (v.alphaSenderId) {
+        console.log(
+          `    ${colors.dim("Sender ID:")}     ${colors.primary(v.alphaSenderId)}`,
+        );
+      }
+      if (v.tollFreeNumber) {
+        console.log(
+          `    ${colors.dim("Toll-Free:")}     ${colors.primary(v.tollFreeNumber)}`,
+        );
+      }
+      console.log();
+    }
+
+    // Capabilities Section
+    console.log(colors.bold("  Send Capabilities"));
+    const caps = status?.capabilities || {
+      canSendSandbox: true,
+      canSendInternational: false,
+      canSendDomestic: false,
+    };
+
+    // Sandbox
+    const sandboxIcon = caps.canSendSandbox
+      ? colors.success("✓")
+      : colors.dim("○");
     console.log(
-      `    ${colors.dim("API Mode:")}     ${apiMode === "test" ? colors.warning("test") + colors.dim(" (sandbox)") : colors.success("live") + colors.dim(" (production)")}`,
+      `    ${sandboxIcon} ${colors.dim("Sandbox")}        Test numbers only`,
     );
+
+    // International
+    const intlIcon = caps.canSendInternational
+      ? colors.success("✓")
+      : colors.dim("○");
+    const intlLabel = caps.canSendInternational
+      ? "48 countries"
+      : colors.dim("Upgrade to unlock");
+    console.log(`    ${intlIcon} ${colors.dim("International")}  ${intlLabel}`);
+
+    // US & Canada
+    const usIcon = caps.canSendDomestic ? colors.success("✓") : colors.dim("○");
+    const usLabel = caps.canSendDomestic
+      ? "Two-way messaging"
+      : colors.dim("Upgrade to unlock");
+    console.log(`    ${usIcon} ${colors.dim("US & Canada")}    ${usLabel}`);
     console.log();
 
     // Credits Section
+    const creditBalance = status?.credits?.balance ?? credits.balance ?? 0;
     console.log(colors.bold("  Credits"));
-    const available = credits.availableBalance || 0;
     const creditColor =
-      available > 100
+      creditBalance > 100
         ? colors.success
-        : available > 10
+        : creditBalance > 10
           ? colors.warning
           : colors.error;
     console.log(
-      `    ${colors.dim("Available:")}    ${creditColor(available.toLocaleString())} credits`,
+      `    ${colors.dim("Balance:")}       ${creditColor(creditBalance.toLocaleString())} credits`,
     );
     if (credits.reservedBalance > 0) {
       console.log(
-        `    ${colors.dim("Reserved:")}     ${colors.warning(credits.reservedBalance.toLocaleString())} credits`,
+        `    ${colors.dim("Reserved:")}      ${colors.warning(credits.reservedBalance.toLocaleString())} credits`,
       );
     }
-    console.log(
-      `    ${colors.dim("Capacity:")}     ~${Math.floor(available).toLocaleString()} SMS (US/CA)`,
-    );
     console.log();
 
-    // Usage Section
-    console.log(colors.bold("  Resources"));
-    const activeKeys = keys.keys?.filter((k: any) => k.isActive).length || 0;
+    // Resources Section
+    const activeKeys =
+      status?.keys?.totalActive ??
+      keys.keys?.filter((k: any) => k.isActive).length ??
+      0;
     const activeWebhooks = webhooks.filter((w: any) => w.is_active).length;
+    console.log(colors.bold("  Resources"));
+    console.log(`    ${colors.dim("API Keys:")}      ${activeKeys} active`);
     console.log(
-      `    ${colors.dim("API Keys:")}     ${activeKeys} active`,
-    );
-    console.log(
-      `    ${colors.dim("Webhooks:")}     ${activeWebhooks} configured${webhooks.length > activeWebhooks ? colors.dim(` (${webhooks.length - activeWebhooks} paused)`) : ""}`,
+      `    ${colors.dim("Webhooks:")}      ${activeWebhooks} configured`,
     );
     console.log();
 
@@ -148,13 +230,13 @@ export default class Status extends AuthenticatedCommand {
     if (messages.messages && messages.messages.length > 0) {
       console.log(colors.bold("  Recent Messages"));
       messages.messages.slice(0, 3).forEach((msg: any) => {
-        const status = msg.status || "unknown";
+        const msgStatus = msg.status || "unknown";
         const statusIcon =
-          status === "delivered"
+          msgStatus === "delivered"
             ? colors.success("✓")
-            : status === "sent"
+            : msgStatus === "sent"
               ? colors.primary("→")
-              : status === "failed"
+              : msgStatus === "failed"
                 ? colors.error("✗")
                 : colors.dim("○");
         const to = msg.to || "Unknown";
@@ -162,23 +244,30 @@ export default class Status extends AuthenticatedCommand {
           ? formatRelativeTime(msg.createdAt)
           : "recently";
         console.log(
-          `    ${statusIcon} ${colors.dim(to.slice(-4).padStart(8, "•"))} ${colors.dim(status.padEnd(10))} ${colors.dim(time)}`,
+          `    ${statusIcon} ${colors.dim(to.slice(-4).padStart(8, "•"))} ${colors.dim(msgStatus.padEnd(10))} ${colors.dim(time)}`,
         );
+      });
+      console.log();
+    }
+
+    // Next Steps (if any)
+    if (status?.nextSteps && status.nextSteps.length > 0) {
+      console.log(colors.bold(colors.warning("  Next Steps")));
+      status.nextSteps.forEach((step, i) => {
+        console.log(`    ${colors.warning(`${i + 1}.`)} ${step}`);
       });
       console.log();
     }
 
     // Quick Actions
     console.log(colors.dim("  Quick Actions"));
-    console.log(
-      `    ${colors.code("sendly sms send")}      Send a message`,
-    );
-    console.log(
-      `    ${colors.code("sendly credits balance")} Check credit balance`,
-    );
-    console.log(
-      `    ${colors.code("sendly webhooks list")}  View webhooks`,
-    );
+    console.log(`    ${colors.code("sendly sms send")}      Send a message`);
+    console.log(`    ${colors.code("sendly keys list")}     View API keys`);
+    if (tier === "sandbox") {
+      console.log(
+        `    ${colors.code("sendly onboarding")}    Upgrade to production`,
+      );
+    }
     console.log();
   }
 }
