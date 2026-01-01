@@ -62,7 +62,6 @@
     "cli-table3": "^0.6.5",
     "conf": "^12.0.0",
     "inquirer": "^9.2.23",
-    "localtunnel": "^2.0.2",
     "open": "^10.1.0",
     "ora": "^8.0.1",
     "ws": "^8.17.0"
@@ -70,7 +69,6 @@
   "devDependencies": {
     "@oclif/test": "^3.2.0",
     "@types/inquirer": "^9.0.7",
-    "@types/localtunnel": "^2.0.4",
     "@types/node": "^20.0.0",
     "@types/ws": "^8.5.10",
     "oclif": "^4.14.0",

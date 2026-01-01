@@ -7,25 +7,44 @@ import {
   info,
   warn,
   colors,
-  formatStatus,
-  formatDate,
   spinner,
-  json as jsonOutput,
-  isJsonMode,
 } from "../../lib/output.js";
 import { getConfigValue } from "../../lib/config.js";
-import localtunnel from "localtunnel";
+import WebSocket from "ws";
+import * as crypto from "node:crypto";
 
 interface WebhookEvent {
   id: string;
   type: string;
-  data: Record<string, unknown>;
+  api_version: string;
   created: number;
+  livemode: boolean;
+  data: {
+    object: Record<string, unknown>;
+  };
+}
+
+interface WebSocketMessage {
+  type: string;
+  timestamp?: number;
+  signature?: string;
+  event?: WebhookEvent;
+  sessionId?: string;
+  events?: string[];
+}
+
+interface ListenStartResponse {
+  sessionId: string;
+  wsToken: string;
+  secret: string;
+  wsUrl: string;
+  events: string[];
+  forwardUrl: string;
 }
 
 export default class WebhooksListen extends AuthenticatedCommand {
   static description =
-    "Listen for webhooks locally (like Stripe CLI). Creates a secure tunnel to forward events to your local server.";
+    "Listen for webhooks locally. Receives events in real-time via WebSocket and forwards them to your local server.";
 
   static examples = [
     "<%= config.bin %> webhooks listen",
@@ -45,125 +64,153 @@ export default class WebhooksListen extends AuthenticatedCommand {
       description: "Comma-separated list of events to listen for",
       default: "message.sent,message.delivered,message.failed,message.bounced",
     }),
-    port: Flags.integer({
-      char: "p",
-      description:
-        "Local port for the tunnel (auto-detected from forward URL if not specified)",
-    }),
   };
 
-  private tunnel: localtunnel.Tunnel | null = null;
-  private webhookId: string | null = null;
+  private ws: WebSocket | null = null;
+  private sessionId: string | null = null;
+  private secret: string | null = null;
 
   async run(): Promise<void> {
     const { flags } = await this.parse(WebhooksListen);
-
-    const forwardUrl = new URL(flags.forward);
-    const localPort = flags.port || parseInt(forwardUrl.port) || 3000;
     const events = flags.events.split(",").map((e) => e.trim());
 
     const spin = spinner("Starting webhook listener...");
     spin.start();
 
     try {
-      // Create localtunnel
-      this.tunnel = await localtunnel({
-        port: localPort,
-        subdomain: `sendly-${Date.now().toString(36)}`,
-      });
+      const response = await apiClient.post<ListenStartResponse>(
+        "/api/cli/listen/start",
+        {
+          events,
+          forwardUrl: flags.forward,
+        },
+      );
 
-      const tunnelUrl = this.tunnel.url;
-      spin.succeed("Tunnel established");
+      this.sessionId = response.sessionId;
+      this.secret = response.secret;
 
-      // Register temporary webhook with Sendly
-      const webhookResponse = await apiClient.post<{
-        id: string;
-        secret: string;
-      }>("/api/cli/webhooks/listen", {
-        url: `${tunnelUrl}/cli-webhook`,
-        events,
-        forwardUrl: flags.forward,
-      });
+      spin.succeed("Listener registered");
 
-      this.webhookId = webhookResponse.id;
-      const secret = webhookResponse.secret;
-
-      // Display connection info
       console.log();
       console.log(colors.bold(colors.primary("Webhook listener ready!")));
       console.log();
-      console.log(
-        `  ${colors.dim("Tunnel URL:")}     ${colors.code(tunnelUrl)}`,
-      );
       console.log(
         `  ${colors.dim("Forwarding to:")} ${colors.code(flags.forward)}`,
       );
       console.log(`  ${colors.dim("Events:")}        ${events.join(", ")}`);
       console.log();
       console.log(`  ${colors.dim("Webhook Secret:")}`);
-      console.log(`  ${colors.primary(secret)}`);
+      console.log(`  ${colors.primary(response.secret)}`);
       console.log();
       console.log(
         colors.dim("Use this secret to verify webhook signatures in your app."),
       );
       console.log();
-      console.log(colors.bold("Waiting for events..."));
+
+      const spin2 = spinner("Connecting to Sendly...");
+      spin2.start();
+
+      await this.connectWebSocket(response.wsUrl, flags.forward);
+
+      spin2.succeed("Connected");
+      console.log();
+      console.log(colors.bold("Waiting for events... (Ctrl+C to quit)"));
       console.log(colors.dim("─".repeat(60)));
       console.log();
 
-      // Set up event forwarding
-      this.tunnel.on("request", (info) => {
-        // This is just for logging - actual forwarding happens server-side
-      });
-
-      // Handle tunnel close
-      this.tunnel.on("close", () => {
-        warn("Tunnel closed");
-        this.cleanup();
+      const cleanup = async () => {
+        console.log();
+        info("Shutting down...");
+        await this.cleanup();
         process.exit(0);
-      });
+      };
 
-      this.tunnel.on("error", (err) => {
-        error(`Tunnel error: ${err.message}`);
-      });
+      process.on("SIGINT", cleanup);
+      process.on("SIGTERM", cleanup);
 
-      // Poll for events and display them
-      await this.pollEvents(flags.forward, secret);
+      await new Promise(() => {});
     } catch (err) {
       spin.fail("Failed to start listener");
       throw err;
     }
   }
 
-  private async pollEvents(forwardUrl: string, secret: string): Promise<void> {
-    // Poll for events at regular intervals
-    const pollInterval = setInterval(async () => {
-      try {
-        const events = await apiClient.get<WebhookEvent[]>(
-          `/api/cli/webhooks/events?webhookId=${this.webhookId}&since=${Date.now() - 5000}`,
-        );
+  private connectWebSocket(wsUrl: string, forwardUrl: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.ws = new WebSocket(wsUrl);
 
-        for (const event of events) {
-          this.displayEvent(event);
-          await this.forwardEvent(forwardUrl, event, secret);
+      const timeout = setTimeout(() => {
+        reject(new Error("WebSocket connection timeout"));
+      }, 30000);
+
+      this.ws.on("open", () => {
+        clearTimeout(timeout);
+      });
+
+      this.ws.on("message", async (data) => {
+        try {
+          const message: WebSocketMessage = JSON.parse(data.toString());
+
+          if (message.type === "cli_connected") {
+            resolve();
+            return;
+          }
+
+          if (message.type === "webhook_event" && message.event) {
+            await this.handleEvent(message, forwardUrl);
+          }
+        } catch (err) {
+          console.error("Failed to parse WebSocket message:", err);
         }
-      } catch {
-        // Ignore polling errors
-      }
-    }, 2000);
+      });
 
-    // Handle graceful shutdown
-    const cleanup = () => {
-      clearInterval(pollInterval);
-      this.cleanup();
-      process.exit(0);
-    };
+      this.ws.on("close", (code, reason) => {
+        if (code !== 1000) {
+          warn(`WebSocket disconnected: ${reason || code}`);
+        }
+      });
 
-    process.on("SIGINT", cleanup);
-    process.on("SIGTERM", cleanup);
+      this.ws.on("error", (err) => {
+        clearTimeout(timeout);
+        error(`WebSocket error: ${err.message}`);
+        reject(err);
+      });
+    });
+  }
 
-    // Keep process alive
-    await new Promise(() => {});
+  private async handleEvent(
+    message: WebSocketMessage,
+    forwardUrl: string,
+  ): Promise<void> {
+    const event = message.event!;
+    const timestamp = message.timestamp!;
+    const signature = message.signature!;
+
+    this.displayEvent(event);
+
+    if (this.verifySignature(event, timestamp, signature)) {
+      await this.forwardEvent(forwardUrl, event, timestamp, signature);
+    } else {
+      console.log(`  ${colors.error("✗")} Signature verification failed`);
+      console.log();
+    }
+  }
+
+  private verifySignature(
+    event: WebhookEvent,
+    timestamp: number,
+    signature: string,
+  ): boolean {
+    if (!this.secret) return false;
+
+    const payload = JSON.stringify(event);
+    const signedPayload = `${timestamp}.${payload}`;
+    const expectedSignature = `sha256=${crypto
+      .createHmac("sha256", this.secret)
+      .update(signedPayload, "utf8")
+      .digest("hex")}`;
+
+    return signature === expectedSignature;
   }
 
   private displayEvent(event: WebhookEvent): void {
@@ -178,35 +225,36 @@ export default class WebhooksListen extends AuthenticatedCommand {
       `${colors.dim(timestamp)} ${statusColor("→")} ${colors.bold(eventType)}`,
     );
 
-    if (event.data) {
-      const messageId =
-        (event.data as any).message_id || (event.data as any).id;
-      const to = (event.data as any).to;
+    const data = event.data?.object;
+    if (data) {
+      const messageId = data.id as string;
+      const to = data.to as string;
       if (messageId) {
-        console.log(`  ${colors.dim("message_id:")} ${messageId}`);
+        console.log(`  ${colors.dim("id:")} ${messageId}`);
       }
       if (to) {
         console.log(`  ${colors.dim("to:")} ${to}`);
       }
     }
-    console.log();
   }
 
   private async forwardEvent(
     forwardUrl: string,
     event: WebhookEvent,
-    secret: string,
+    timestamp: number,
+    signature: string,
   ): Promise<void> {
     try {
       const payload = JSON.stringify(event);
-      const signature = await this.generateSignature(payload, secret);
 
       const response = await fetch(forwardUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Sendly-Signature": signature,
+          "X-Sendly-Timestamp": timestamp.toString(),
           "X-Sendly-Event": event.type,
+          "X-Sendly-Event-Id": event.id,
         },
         body: payload,
       });
@@ -228,40 +276,15 @@ export default class WebhooksListen extends AuthenticatedCommand {
     console.log();
   }
 
-  private async generateSignature(
-    payload: string,
-    secret: string,
-  ): Promise<string> {
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const signature = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      encoder.encode(payload),
-    );
-    const hashArray = Array.from(new Uint8Array(signature));
-    const hashHex = hashArray
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    return `v1=${hashHex}`;
-  }
-
   private async cleanup(): Promise<void> {
-    // Clean up tunnel
-    if (this.tunnel) {
-      this.tunnel.close();
+    if (this.ws) {
+      this.ws.close(1000, "Client shutdown");
+      this.ws = null;
     }
 
-    // Clean up temporary webhook
-    if (this.webhookId) {
+    if (this.sessionId) {
       try {
-        await apiClient.delete(`/api/cli/webhooks/listen/${this.webhookId}`);
+        await apiClient.delete(`/api/cli/listen/stop/${this.sessionId}`);
       } catch {
         // Ignore cleanup errors
       }
