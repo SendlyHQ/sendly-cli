@@ -221,7 +221,7 @@ sendly config get baseUrl
 #### Set Configuration Value
 
 ```bash
-sendly config set baseUrl https://api.sendly.live
+sendly config set baseUrl https://sendly.live
 ```
 
 #### List All Configuration

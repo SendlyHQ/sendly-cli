@@ -9,6 +9,7 @@
  * - SENDLY_NO_COLOR: Disable colored output (any value)
  * - SENDLY_TIMEOUT: Request timeout in ms (default: 30000)
  * - SENDLY_MAX_RETRIES: Max retry attempts (default: 3)
+ * - SENDLY_CONFIG_KEY: Custom encryption key (for CI/CD)
  * - CI: Auto-detect CI mode (disables interactive prompts)
  */
 
@@ -16,6 +17,7 @@ import Conf from "conf";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import * as crypto from "node:crypto";
 
 export interface SendlyConfig {
   // Authentication
@@ -68,26 +70,135 @@ export function isColorDisabled(): boolean {
 const CONFIG_DIR = path.join(os.homedir(), ".sendly");
 const CONFIG_FILE = "config.json";
 
-// Ensure config directory exists
+// Old default key - used for migration only
+const OLD_DEFAULT_KEY = "sendly-cli-default-key-v1";
+
+/**
+ * Derive a machine-specific encryption key.
+ * This ensures each installation has a unique key that can't be easily guessed.
+ *
+ * The key is derived from machine-specific identifiers that are:
+ * - Unique per machine
+ * - Stable across sessions
+ * - Not publicly known
+ */
+function deriveEncryptionKey(): string {
+  const machineId = [os.hostname(), os.userInfo().username, os.homedir()].join(
+    ":",
+  );
+
+  return crypto
+    .createHash("sha256")
+    .update(`sendly:${machineId}:v2`)
+    .digest("hex");
+}
+
+/**
+ * Get the encryption key to use for config.
+ * Priority: SENDLY_CONFIG_KEY env var > machine-derived key
+ */
+function getEncryptionKey(): string {
+  // Explicit key takes precedence (for CI/CD, testing, advanced users)
+  if (process.env.SENDLY_CONFIG_KEY) {
+    return process.env.SENDLY_CONFIG_KEY;
+  }
+  return deriveEncryptionKey();
+}
+
+// Ensure config directory exists with secure permissions
 if (!fs.existsSync(CONFIG_DIR)) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
 }
 
-const config = new Conf<SendlyConfig>({
-  projectName: "sendly",
-  cwd: CONFIG_DIR,
-  configName: "config",
-  defaults: {
-    environment: "test",
-    baseUrl: "https://sendly.live",
-    defaultFormat: "human",
-    colorEnabled: true,
-    timeout: 30000,
-    maxRetries: 3,
-  },
-  // Encrypt sensitive data
-  encryptionKey: process.env.SENDLY_CONFIG_KEY || "sendly-cli-default-key-v1",
-});
+const DEFAULT_CONFIG: SendlyConfig = {
+  environment: "test",
+  baseUrl: "https://sendly.live",
+  defaultFormat: "human",
+  colorEnabled: true,
+  timeout: 30000,
+  maxRetries: 3,
+};
+
+/**
+ * Initialize config with automatic migration from old encryption key.
+ * This ensures existing users don't lose their credentials.
+ */
+function initializeConfig(): Conf<SendlyConfig> {
+  const newKey = getEncryptionKey();
+
+  // Try to initialize with new key first
+  try {
+    const newConfig = new Conf<SendlyConfig>({
+      projectName: "sendly",
+      cwd: CONFIG_DIR,
+      configName: "config",
+      defaults: DEFAULT_CONFIG,
+      encryptionKey: newKey,
+    });
+
+    // Try to read a value to verify decryption works
+    newConfig.get("environment");
+    return newConfig;
+  } catch {
+    // New key didn't work - try migration from old key
+  }
+
+  // Migration: Try to read with old default key
+  try {
+    const oldConfig = new Conf<SendlyConfig>({
+      projectName: "sendly",
+      cwd: CONFIG_DIR,
+      configName: "config",
+      defaults: DEFAULT_CONFIG,
+      encryptionKey: OLD_DEFAULT_KEY,
+    });
+
+    // Read all data with old key
+    const oldData = { ...oldConfig.store };
+    const hasData = Object.keys(oldData).some(
+      (k) =>
+        !Object.keys(DEFAULT_CONFIG).includes(k) ||
+        oldData[k as keyof SendlyConfig] !==
+          DEFAULT_CONFIG[k as keyof SendlyConfig],
+    );
+
+    if (hasData) {
+      // Clear old config file
+      oldConfig.clear();
+
+      // Create new config with new key
+      const newConfig = new Conf<SendlyConfig>({
+        projectName: "sendly",
+        cwd: CONFIG_DIR,
+        configName: "config",
+        defaults: DEFAULT_CONFIG,
+        encryptionKey: newKey,
+      });
+
+      // Restore data with new encryption
+      for (const [key, value] of Object.entries(oldData)) {
+        if (value !== undefined) {
+          newConfig.set(key as keyof SendlyConfig, value);
+        }
+      }
+
+      return newConfig;
+    }
+  } catch {
+    // Old key also didn't work - corrupted or fresh install
+  }
+
+  // Fresh install or corrupted - start with new key
+  return new Conf<SendlyConfig>({
+    projectName: "sendly",
+    cwd: CONFIG_DIR,
+    configName: "config",
+    defaults: DEFAULT_CONFIG,
+    encryptionKey: newKey,
+  });
+}
+
+const config = initializeConfig();
 
 /**
  * Get effective config value with environment variable override
