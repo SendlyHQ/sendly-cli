@@ -1,5 +1,29 @@
 # @sendly/cli
 
+## 3.6.1
+
+### Patch Changes
+
+- [`5a6d786`](https://github.com/sendly-live/sendly/commit/5a6d786cf125633ae53037ce7bdfec7e4e702a39) Thanks [@sendly-live](https://github.com/sendly-live)! - ## CLI Webhook Listener Fix
+
+  ### What's Fixed
+
+  Fixed a critical bug where `sendly webhooks listen` would immediately disconnect with "Invalid or expired CLI token" error.
+
+  **Root Causes:**
+  1. **Upstash Redis Auto-Deserialization**: Redis was returning parsed JSON objects, but code was calling `JSON.parse()` again, causing "[object Object] is not valid JSON" errors
+  2. **Multi-Instance Token Signing**: In multi-instance Fly.io deployments, each server instance was generating its own random signing secret, causing tokens created on one instance to fail validation on another
+
+  **Technical Changes:**
+  - Fixed Redis data handling in `websocket.ts` to handle both string and object responses from Upstash
+  - Fixed `cli-tokens.ts` to properly handle Upstash auto-deserialization
+  - Server now uses consistent `CLI_TOKEN_SECRET` environment variable across all instances
+
+  **Affected Commands:**
+  - `sendly webhooks listen` - Now stays connected properly
+  - `sendly login` - Token validation now works across server instances
+  - `sendly logout` - Server-side token revocation now works correctly
+
 ## 3.6.0
 
 ### Minor Changes
