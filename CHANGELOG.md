@@ -17,7 +17,7 @@
 
 ### Minor Changes
 
-- [`a3cd711`](https://github.com/sendly-live/sendly/commit/a3cd711454b002d78c924e81421c9b129dbbb546) Thanks [@sendly-live](https://github.com/sendly-live)! - ## New Features
+- [`a3cd711`](https://github.com/SendlyHQ/sendly/commit/a3cd711454b002d78c924e81421c9b129dbbb546) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - ## New Features
   - **Batch Preview (Dry Run)**: New `previewBatch()` method across all 8 SDKs to validate batch messages before sending - returns per-country credit breakdown, blocked messages, and validation errors without consuming credits
   - **Programmatic API Key Management**: New `createApiKey()` and `revokeApiKey()` methods across all 8 SDKs for full API key lifecycle management
   - **Webhook Event Discovery**: New `listEventTypes()` method (Java, PHP, Rust, .NET) to enumerate available webhook event types
@@ -36,7 +36,7 @@
 
 ### Patch Changes
 
-- [`5a6d786`](https://github.com/sendly-live/sendly/commit/5a6d786cf125633ae53037ce7bdfec7e4e702a39) Thanks [@sendly-live](https://github.com/sendly-live)! - ## CLI Webhook Listener Fix
+- [`5a6d786`](https://github.com/SendlyHQ/sendly/commit/5a6d786cf125633ae53037ce7bdfec7e4e702a39) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - ## CLI Webhook Listener Fix
 
   ### What's Fixed
 
@@ -86,7 +86,7 @@
 
 ### Patch Changes
 
-- [`17e3435`](https://github.com/sendly-live/sendly/commit/17e343517764981741cfbae521cf5a5251895d36) Thanks [@sendly-live](https://github.com/sendly-live)! - ## Critical Bug Fixes
+- [`17e3435`](https://github.com/SendlyHQ/sendly/commit/17e343517764981741cfbae521cf5a5251895d36) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - ## Critical Bug Fixes
 
   ### Toll-Free Verification Status
   - Fixed: Telnyx returns `"Verified"` status but code only checked for `"approved"`
@@ -108,7 +108,7 @@
 
 ### Patch Changes
 
-- [`19bad0a`](https://github.com/sendly-live/sendly/commit/19bad0a44fef3ebbffe1478cd3c736d5e845cd1d) - ## Documentation Improvements
+- [`19bad0a`](https://github.com/SendlyHQ/sendly/commit/19bad0a44fef3ebbffe1478cd3c736d5e845cd1d) - ## Documentation Improvements
 
   ### New: Going Live Guide
   - Added `/docs/going-live` page with step-by-step verification flow
@@ -131,14 +131,14 @@
 
   ### SDK READMEs
   - All 8 SDKs updated with consistent sandbox numbers
-  - Fixed Go SDK path: `github.com/sendly-live/sendly-go`
+  - Fixed Go SDK path: `github.com/SendlyHQ/sendly-go`
   - Fixed domain references: `sendly.dev` → `sendly.live`
 
 ## 3.5.2
 
 ### Patch Changes
 
-- [`b503f48`](https://github.com/sendly-live/sendly/commit/b503f48140b00a4d4bc3cf5227a7c96baa1b36b1) Thanks [@sendly-live](https://github.com/sendly-live)! - Improved error handling and authentication fixes
+- [`b503f48`](https://github.com/SendlyHQ/sendly/commit/b503f48140b00a4d4bc3cf5227a7c96baa1b36b1) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - Improved error handling and authentication fixes
 
   ### CLI Improvements
   - **API Key Required Errors**: When using CLI session tokens for operations that require an API key (like sending messages), the CLI now displays a clear error with instructions on how to set up an API key
@@ -301,7 +301,7 @@
 
 ### Patch Changes
 
-- [`2082b3a`](https://github.com/sendly-live/sendly/commit/2082b3a30c605529aa8f891c0d13c5169ce4db00) Thanks [@sendly-live](https://github.com/sendly-live)! - ## Bug Fixes
+- [`2082b3a`](https://github.com/SendlyHQ/sendly/commit/2082b3a30c605529aa8f891c0d13c5169ce4db00) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - ## Bug Fixes
   - **Webhook commands**: Fixed snake_case field name handling to match API responses (`is_active`, `circuit_state`, `failure_count`, `created_at`)
   - **Keys commands**: Fixed `keys create` and `keys revoke` to use correct CLI API endpoints (`/api/v1/account/keys`)
   - **Credits history**: Fixed authentication by using CLI API endpoint (`/api/v1/credits/transactions`)
@@ -321,7 +321,7 @@
 
 ### Patch Changes
 
-- [`49ae989`](https://github.com/sendly-live/sendly/commit/49ae9892f7a4bc192ecb0d665f1f450f5d9208be) Thanks [@sendly-live](https://github.com/sendly-live)! - - Add retry logic with exponential backoff for 5xx server errors
+- [`49ae989`](https://github.com/SendlyHQ/sendly/commit/49ae9892f7a4bc192ecb0d665f1f450f5d9208be) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - - Add retry logic with exponential backoff for 5xx server errors
   - Fix User-Agent header to use dynamic version from package.json
   - Remove dead EventSource code from webhook listener
   - Fix README config path documentation
@@ -336,7 +336,7 @@
 
 ### Major Changes
 
-- [`c5a261b`](https://github.com/sendly-live/sendly/commit/c5a261b8306e53be9d0cf37cd35827f1ec709817) Thanks [@sendly-live](https://github.com/sendly-live)! - feat: complete CLI authentication system with OAuth device flow and secure onboarding
+- [`c5a261b`](https://github.com/SendlyHQ/sendly/commit/c5a261b8306e53be9d0cf37cd35827f1ec709817) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - feat: complete CLI authentication system with OAuth device flow and secure onboarding
 
   ## 🔐 Major CLI Authentication Overhaul
 
@@ -425,7 +425,7 @@
 
 ### Minor Changes
 
-- [`ed8ebb5`](https://github.com/sendly-live/sendly/commit/ed8ebb5ede1ba9ba624906e8ce348711a2b513ea) Thanks [@sendly-live](https://github.com/sendly-live)! - Complete webhook system implementation with full SDK and CLI support.
+- [`ed8ebb5`](https://github.com/SendlyHQ/sendly/commit/ed8ebb5ede1ba9ba624906e8ce348711a2b513ea) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - Complete webhook system implementation with full SDK and CLI support.
 
   **🚀 New Features:**
 
@@ -460,7 +460,7 @@
 
 ### Minor Changes
 
-- [`56fa46e`](https://github.com/sendly-live/sendly/commit/56fa46e95e0c3cded81e3c45a7f25e6bb8088e8c) Thanks [@sendly-live](https://github.com/sendly-live)! - Enhanced CLI with batch messaging, scheduled SMS, and improved developer experience.
+- [`56fa46e`](https://github.com/SendlyHQ/sendly/commit/56fa46e95e0c3cded81e3c45a7f25e6bb8088e8c) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - Enhanced CLI with batch messaging, scheduled SMS, and improved developer experience.
 
   **✨ New Features:**
 

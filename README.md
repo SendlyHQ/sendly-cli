@@ -326,7 +326,7 @@ function verifyWebhook(payload, signature, secret) {
 
 ## Support
 
-- [GitHub Issues](https://github.com/sendly-live/sendly-cli/issues)
+- [GitHub Issues](https://github.com/SendlyHQ/sendly-cli/issues)
 - Email: support@sendly.live
 
 ## License
