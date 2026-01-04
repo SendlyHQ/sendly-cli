@@ -20,7 +20,7 @@
     "dev": "tsc -b --watch",
     "lint": "eslint . --ext .ts",
     "postpack": "shx rm -f oclif.manifest.json",
-    "prepack": "npm run build && oclif manifest && oclif readme",
+    "prepack": "npm run build && [ -f oclif.manifest.json ] || oclif manifest && oclif readme",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

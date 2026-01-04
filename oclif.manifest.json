@@ -1,0 +1,1836 @@
+{
+  "commands": {
+    "doctor": {
+      "aliases": [],
+      "args": {},
+      "description": "Diagnose CLI setup and connectivity issues",
+      "examples": [
+        "<%= config.bin %> doctor",
+        "<%= config.bin %> doctor --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "doctor",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "doctor.js"
+      ]
+    },
+    "login": {
+      "aliases": [],
+      "args": {},
+      "description": "Authenticate with Sendly",
+      "examples": [
+        "<%= config.bin %> login",
+        "<%= config.bin %> login --api-key sk_test_v1_xxx"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "api-key": {
+          "char": "k",
+          "description": "API key to use for authentication",
+          "name": "api-key",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "interactive": {
+          "char": "i",
+          "description": "Force interactive mode",
+          "name": "interactive",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "login",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "login.js"
+      ]
+    },
+    "logout": {
+      "aliases": [],
+      "args": {},
+      "description": "Log out of Sendly",
+      "examples": [
+        "<%= config.bin %> logout"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "logout",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "logout.js"
+      ]
+    },
+    "onboarding": {
+      "aliases": [],
+      "args": {},
+      "description": "Interactive onboarding for new users",
+      "examples": [
+        "$ sendly onboarding",
+        "$ sendly onboarding --help"
+      ],
+      "flags": {},
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "onboarding",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "onboarding.js"
+      ]
+    },
+    "send": {
+      "aliases": [],
+      "args": {},
+      "description": "Send an SMS message (shortcut for 'sms send')",
+      "examples": [
+        "<%= config.bin %> send --to \"+1234567890\" --text \"Hello!\"",
+        "<%= config.bin %> send -t \"+1234567890\" -m \"Meeting at 3pm\"",
+        "<%= config.bin %> send --to \"+1234567890\" --text \"Hello!\" --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "to": {
+          "char": "t",
+          "description": "Recipient phone number (E.164 format)",
+          "name": "to",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "text": {
+          "char": "m",
+          "description": "Message text",
+          "name": "text",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "from": {
+          "char": "f",
+          "description": "Sender phone number (optional, uses default if not set)",
+          "name": "from",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "send",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "send.js"
+      ]
+    },
+    "status": {
+      "aliases": [],
+      "args": {},
+      "description": "Show account status dashboard with credits, usage, and capabilities",
+      "examples": [
+        "<%= config.bin %> status",
+        "<%= config.bin %> status --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "status",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "status.js"
+      ]
+    },
+    "trigger": {
+      "aliases": [],
+      "args": {
+        "event": {
+          "description": "Event type to trigger",
+          "name": "event",
+          "options": [
+            "message.sent",
+            "message.delivered",
+            "message.failed",
+            "message.bounced",
+            "message.received"
+          ],
+          "required": true
+        }
+      },
+      "description": "Trigger a test webhook event. Sends a synthetic event to your active CLI listener.",
+      "examples": [
+        "<%= config.bin %> trigger message.delivered",
+        "<%= config.bin %> trigger message.failed",
+        "<%= config.bin %> trigger message.sent"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "trigger",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "trigger.js"
+      ]
+    },
+    "whoami": {
+      "aliases": [],
+      "args": {},
+      "description": "Show current authentication status",
+      "examples": [
+        "<%= config.bin %> whoami"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "whoami",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "whoami.js"
+      ]
+    },
+    "config:get": {
+      "aliases": [],
+      "args": {
+        "key": {
+          "description": "Configuration key",
+          "name": "key",
+          "options": [
+            "environment",
+            "baseUrl",
+            "defaultFormat",
+            "colorEnabled"
+          ],
+          "required": true
+        }
+      },
+      "description": "Get a configuration value",
+      "examples": [
+        "<%= config.bin %> config get environment",
+        "<%= config.bin %> config get baseUrl"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "config:get",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "config",
+        "get.js"
+      ]
+    },
+    "config:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List all configuration values",
+      "examples": [
+        "<%= config.bin %> config list",
+        "<%= config.bin %> config list --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "config:list",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "config",
+        "list.js"
+      ]
+    },
+    "config:set": {
+      "aliases": [],
+      "args": {
+        "key": {
+          "description": "Configuration key",
+          "name": "key",
+          "options": [
+            "environment",
+            "baseUrl",
+            "defaultFormat",
+            "colorEnabled"
+          ],
+          "required": true
+        },
+        "value": {
+          "description": "Configuration value",
+          "name": "value",
+          "required": true
+        }
+      },
+      "description": "Set a configuration value",
+      "examples": [
+        "<%= config.bin %> config set environment live",
+        "<%= config.bin %> config set defaultFormat json",
+        "<%= config.bin %> config set baseUrl https://api.sendly.live"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "config:set",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "config",
+        "set.js"
+      ]
+    },
+    "credits:balance": {
+      "aliases": [],
+      "args": {},
+      "description": "Check your credit balance",
+      "examples": [
+        "<%= config.bin %> credits balance",
+        "<%= config.bin %> credits balance --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "credits:balance",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "credits",
+        "balance.js"
+      ]
+    },
+    "credits:history": {
+      "aliases": [],
+      "args": {},
+      "description": "View credit transaction history",
+      "examples": [
+        "<%= config.bin %> credits history",
+        "<%= config.bin %> credits history --limit 10",
+        "<%= config.bin %> credits history --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "limit": {
+          "char": "l",
+          "description": "Number of transactions to show",
+          "name": "limit",
+          "default": 20,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "credits:history",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "credits",
+        "history.js"
+      ]
+    },
+    "keys:create": {
+      "aliases": [],
+      "args": {},
+      "description": "Create a new API key",
+      "examples": [
+        "<%= config.bin %> keys create --name \"Production\"",
+        "<%= config.bin %> keys create --name \"CI Testing\" --type test",
+        "<%= config.bin %> keys create --name \"Backend\" --type live --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "name": {
+          "char": "n",
+          "description": "Name for the API key",
+          "name": "name",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "type": {
+          "char": "t",
+          "description": "Key type (test or live)",
+          "name": "type",
+          "default": "test",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "test",
+            "live"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "keys:create",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "keys",
+        "create.js"
+      ]
+    },
+    "keys:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List your API keys",
+      "examples": [
+        "<%= config.bin %> keys list",
+        "<%= config.bin %> keys list --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "keys:list",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "keys",
+        "list.js"
+      ]
+    },
+    "keys:revoke": {
+      "aliases": [],
+      "args": {
+        "keyId": {
+          "description": "Key ID to revoke (e.g., key_abc123)",
+          "name": "keyId",
+          "required": true
+        }
+      },
+      "description": "Revoke an API key",
+      "examples": [
+        "<%= config.bin %> keys revoke key_abc123",
+        "<%= config.bin %> keys revoke key_abc123 --reason \"Compromised\"",
+        "<%= config.bin %> keys revoke key_abc123 --yes"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "reason": {
+          "char": "r",
+          "description": "Reason for revoking the key",
+          "name": "reason",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "yes": {
+          "char": "y",
+          "description": "Skip confirmation prompt",
+          "name": "yes",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "keys:revoke",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "keys",
+        "revoke.js"
+      ]
+    },
+    "logs:tail": {
+      "aliases": [],
+      "args": {},
+      "description": "Tail logs in real-time (like stripe logs tail)",
+      "examples": [
+        "<%= config.bin %> logs tail",
+        "<%= config.bin %> logs tail --status failed",
+        "<%= config.bin %> logs tail --since 1h"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "status": {
+          "char": "s",
+          "description": "Filter by status (sent, delivered, failed)",
+          "name": "status",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "since": {
+          "description": "Show logs since (e.g., 1h, 30m, 1d)",
+          "name": "since",
+          "default": "1h",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "type": {
+          "char": "t",
+          "description": "Filter by type (message, api_call, webhook)",
+          "name": "type",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "logs:tail",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "logs",
+        "tail.js"
+      ]
+    },
+    "sms:batch": {
+      "aliases": [],
+      "args": {},
+      "description": "Send batch SMS messages (uploads CSV to cloud for audit trail)",
+      "examples": [
+        "<%= config.bin %> sms batch --file recipients.csv",
+        "<%= config.bin %> sms batch --file phones.csv --text \"Hello everyone!\"",
+        "<%= config.bin %> sms batch --to +15551234567,+15559876543 --text \"Hello!\"",
+        "<%= config.bin %> sms batch --file recipients.csv --dry-run",
+        "<%= config.bin %> sms batch --file phones.csv --text \"Code: 123\" --type transactional",
+        "<%= config.bin %> sms batch --reuse abc123-def456",
+        "<%= config.bin %> sms batch --history"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "file": {
+          "char": "F",
+          "description": "CSV file with phone numbers (and optional message text)",
+          "exclusive": [
+            "to",
+            "reuse",
+            "history"
+          ],
+          "name": "file",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "to": {
+          "char": "t",
+          "description": "Comma-separated recipient phone numbers (E.164 format)",
+          "exclusive": [
+            "file",
+            "reuse",
+            "history"
+          ],
+          "name": "to",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "text": {
+          "char": "m",
+          "description": "Message text (required with --to, optional with --file if CSV has text column)",
+          "name": "text",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "from": {
+          "char": "f",
+          "description": "Sender ID or phone number for all messages",
+          "name": "from",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "type": {
+          "description": "Message type: marketing (default) or transactional. Transactional bypasses quiet hours.",
+          "name": "type",
+          "default": "marketing",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "marketing",
+            "transactional"
+          ],
+          "type": "option"
+        },
+        "dry-run": {
+          "char": "d",
+          "description": "Preview batch without sending (validates access, shows cost and compliance breakdown)",
+          "name": "dry-run",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "reuse": {
+          "description": "Re-use a previous batch upload by ID (see --history)",
+          "exclusive": [
+            "file",
+            "to",
+            "history"
+          ],
+          "name": "reuse",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "history": {
+          "description": "Show recent batch upload history",
+          "exclusive": [
+            "file",
+            "to",
+            "reuse"
+          ],
+          "name": "history",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "sms:batch",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "sms",
+        "batch.js"
+      ]
+    },
+    "sms:cancel": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Scheduled message ID to cancel",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Cancel a scheduled message",
+      "examples": [
+        "<%= config.bin %> sms cancel sched_abc123",
+        "<%= config.bin %> sms cancel sched_abc123 --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "sms:cancel",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "sms",
+        "cancel.js"
+      ]
+    },
+    "sms:get": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Message ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Get details of a specific message",
+      "examples": [
+        "<%= config.bin %> sms get msg_abc123",
+        "<%= config.bin %> sms get msg_abc123 --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "sms:get",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "sms",
+        "get.js"
+      ]
+    },
+    "sms:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List sent messages",
+      "examples": [
+        "<%= config.bin %> sms list",
+        "<%= config.bin %> sms list --limit 10",
+        "<%= config.bin %> sms list --page 2",
+        "<%= config.bin %> sms list --status delivered",
+        "<%= config.bin %> sms list --sandbox",
+        "<%= config.bin %> sms list --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "limit": {
+          "char": "l",
+          "description": "Number of messages per page",
+          "name": "limit",
+          "default": 20,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "page": {
+          "char": "p",
+          "description": "Page number (starts at 1)",
+          "name": "page",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "offset": {
+          "description": "Offset from start (alternative to --page)",
+          "name": "offset",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "status": {
+          "char": "s",
+          "description": "Filter by status (queued, sent, delivered, failed)",
+          "name": "status",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "sandbox": {
+          "description": "Show sandbox/test messages (live keys only)",
+          "name": "sandbox",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "sms:list",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "sms",
+        "list.js"
+      ]
+    },
+    "sms:schedule": {
+      "aliases": [],
+      "args": {},
+      "description": "Schedule an SMS message for future delivery",
+      "examples": [
+        "<%= config.bin %> sms schedule --to +15551234567 --text \"Reminder!\" --at \"2025-01-20T10:00:00Z\"",
+        "<%= config.bin %> sms schedule --to +15551234567 --text \"Meeting in 1 hour\" --at \"2025-01-15T14:00:00Z\" --from \"Sendly\"",
+        "<%= config.bin %> sms schedule --to +15551234567 --text \"Your code: 123456\" --at \"2025-01-20T10:00:00Z\" --type transactional",
+        "<%= config.bin %> sms schedule --to +15551234567 --text \"Hello!\" --at \"2025-01-20T10:00:00Z\" --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "to": {
+          "char": "t",
+          "description": "Recipient phone number (E.164 format)",
+          "name": "to",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "text": {
+          "char": "m",
+          "description": "Message text",
+          "name": "text",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "at": {
+          "char": "a",
+          "description": "Scheduled time (ISO 8601 format, e.g., 2025-01-20T10:00:00Z)",
+          "name": "at",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "from": {
+          "char": "f",
+          "description": "Sender ID or phone number",
+          "name": "from",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "type": {
+          "description": "Message type: marketing (default) or transactional. Transactional messages bypass quiet hours.",
+          "name": "type",
+          "default": "marketing",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "marketing",
+            "transactional"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "sms:schedule",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "sms",
+        "schedule.js"
+      ]
+    },
+    "sms:scheduled": {
+      "aliases": [],
+      "args": {},
+      "description": "List scheduled messages",
+      "examples": [
+        "<%= config.bin %> sms scheduled",
+        "<%= config.bin %> sms scheduled --limit 10",
+        "<%= config.bin %> sms scheduled --status scheduled",
+        "<%= config.bin %> sms scheduled --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "limit": {
+          "char": "l",
+          "description": "Number of messages to show",
+          "name": "limit",
+          "default": 20,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "status": {
+          "char": "s",
+          "description": "Filter by status (scheduled, sent, cancelled, failed)",
+          "name": "status",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "sms:scheduled",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "sms",
+        "scheduled.js"
+      ]
+    },
+    "sms:send": {
+      "aliases": [],
+      "args": {},
+      "description": "Send an SMS message",
+      "examples": [
+        "<%= config.bin %> sms send --to +15551234567 --text \"Hello!\"",
+        "<%= config.bin %> sms send --to +15551234567 --text \"Hello!\" --from \"Sendly\"",
+        "<%= config.bin %> sms send --to +15551234567 --text \"Hello!\" --type transactional",
+        "<%= config.bin %> sms send --to +15551234567 --text \"Hello!\" --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "to": {
+          "char": "t",
+          "description": "Recipient phone number (E.164 format)",
+          "name": "to",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "text": {
+          "char": "m",
+          "description": "Message text",
+          "name": "text",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "from": {
+          "char": "f",
+          "description": "Sender ID or phone number",
+          "name": "from",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "type": {
+          "description": "Message type: marketing (default) or transactional",
+          "name": "type",
+          "default": "marketing",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "marketing",
+            "transactional"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "sms:send",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "sms",
+        "send.js"
+      ]
+    },
+    "webhooks:create": {
+      "aliases": [],
+      "args": {},
+      "description": "Create a webhook",
+      "examples": [
+        "<%= config.bin %> webhooks create --url https://myapp.com/webhook --events message.delivered",
+        "<%= config.bin %> webhooks create --url https://myapp.com/webhook --events message.delivered,message.failed --description \"Production webhook\"",
+        "<%= config.bin %> webhooks create --url https://webhook.site/abc123 --events message.sent --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "url": {
+          "char": "u",
+          "description": "Webhook URL (must be HTTPS)",
+          "name": "url",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "events": {
+          "char": "e",
+          "description": "Comma-separated list of events to listen for",
+          "name": "events",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "description": {
+          "char": "d",
+          "description": "Description for the webhook",
+          "name": "description",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "mode": {
+          "char": "m",
+          "description": "Event mode filter: all (default), test (sandbox only), live (production only)",
+          "name": "mode",
+          "default": "all",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "all",
+            "test",
+            "live"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:create",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "create.js"
+      ]
+    },
+    "webhooks:delete": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Webhook ID to delete",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Delete a webhook",
+      "examples": [
+        "<%= config.bin %> webhooks delete whk_abc123",
+        "<%= config.bin %> webhooks delete whk_abc123 --yes",
+        "<%= config.bin %> webhooks delete whk_abc123 --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "yes": {
+          "char": "y",
+          "description": "Skip confirmation prompt",
+          "name": "yes",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:delete",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "delete.js"
+      ]
+    },
+    "webhooks:deliveries": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Webhook ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "View webhook delivery history",
+      "examples": [
+        "<%= config.bin %> webhooks deliveries whk_abc123",
+        "<%= config.bin %> webhooks deliveries whk_abc123 --limit 20",
+        "<%= config.bin %> webhooks deliveries whk_abc123 --failed-only",
+        "<%= config.bin %> webhooks deliveries whk_abc123 --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "limit": {
+          "char": "l",
+          "description": "Number of deliveries to show",
+          "name": "limit",
+          "default": 10,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "failed-only": {
+          "description": "Show only failed deliveries",
+          "name": "failed-only",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:deliveries",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "deliveries.js"
+      ]
+    },
+    "webhooks:get": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Webhook ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Get webhook details",
+      "examples": [
+        "<%= config.bin %> webhooks get whk_abc123",
+        "<%= config.bin %> webhooks get whk_abc123 --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:get",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "get.js"
+      ]
+    },
+    "webhooks:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List configured webhooks",
+      "examples": [
+        "<%= config.bin %> webhooks list",
+        "<%= config.bin %> webhooks list --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:list",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "list.js"
+      ]
+    },
+    "webhooks:listen": {
+      "aliases": [],
+      "args": {},
+      "description": "Listen for webhooks locally. Receives events in real-time via WebSocket and forwards them to your local server.",
+      "examples": [
+        "<%= config.bin %> webhooks listen",
+        "<%= config.bin %> webhooks listen --forward http://localhost:3000/webhook",
+        "<%= config.bin %> webhooks listen --events message.delivered,message.failed"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "forward": {
+          "char": "f",
+          "description": "Local URL to forward events to",
+          "name": "forward",
+          "default": "http://localhost:3000/webhook",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "events": {
+          "char": "e",
+          "description": "Comma-separated list of events to listen for",
+          "name": "events",
+          "default": "message.sent,message.delivered,message.failed,message.bounced",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:listen",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "listen.js"
+      ]
+    },
+    "webhooks:rotate-secret": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Webhook ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Rotate webhook secret",
+      "examples": [
+        "<%= config.bin %> webhooks rotate-secret whk_abc123",
+        "<%= config.bin %> webhooks rotate-secret whk_abc123 --yes",
+        "<%= config.bin %> webhooks rotate-secret whk_abc123 --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "yes": {
+          "char": "y",
+          "description": "Skip confirmation prompt",
+          "name": "yes",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:rotate-secret",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "rotate-secret.js"
+      ]
+    },
+    "webhooks:test": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Webhook ID to test",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Send a test event to a webhook",
+      "examples": [
+        "<%= config.bin %> webhooks test whk_abc123",
+        "<%= config.bin %> webhooks test whk_abc123 --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:test",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "test.js"
+      ]
+    },
+    "webhooks:update": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Webhook ID to update",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Update a webhook",
+      "examples": [
+        "<%= config.bin %> webhooks update whk_abc123 --url https://newdomain.com/webhook",
+        "<%= config.bin %> webhooks update whk_abc123 --events message.delivered,message.failed",
+        "<%= config.bin %> webhooks update whk_abc123 --description \"Updated production webhook\"",
+        "<%= config.bin %> webhooks update whk_abc123 --active false",
+        "<%= config.bin %> webhooks update whk_abc123 --url https://newdomain.com/webhook --events message.sent --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "url": {
+          "char": "u",
+          "description": "Update webhook URL (must be HTTPS)",
+          "name": "url",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "events": {
+          "char": "e",
+          "description": "Update events list (comma-separated)",
+          "name": "events",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "description": {
+          "char": "d",
+          "description": "Update description",
+          "name": "description",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "active": {
+          "char": "a",
+          "description": "Enable or disable the webhook",
+          "name": "active",
+          "allowNo": true,
+          "type": "boolean"
+        },
+        "mode": {
+          "char": "m",
+          "description": "Update event mode filter: all, test (sandbox only), live (production only)",
+          "name": "mode",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "all",
+            "test",
+            "live"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "webhooks:update",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "webhooks",
+        "update.js"
+      ]
+    }
+  },
+  "version": "3.8.1"
+}
