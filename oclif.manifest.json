@@ -1313,6 +1313,552 @@
         "send.js"
       ]
     },
+    "verify:check": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Verification ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Verify an OTP code",
+      "examples": [
+        "<%= config.bin %> verify check ver_xxx --code 123456",
+        "<%= config.bin %> verify check ver_xxx -c 123456"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "code": {
+          "char": "c",
+          "description": "The OTP code to verify",
+          "name": "code",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "verify:check",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "verify",
+        "check.js"
+      ]
+    },
+    "verify:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List recent verifications",
+      "examples": [
+        "<%= config.bin %> verify list",
+        "<%= config.bin %> verify list --limit 10",
+        "<%= config.bin %> verify list --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "limit": {
+          "char": "n",
+          "description": "Number of verifications to show",
+          "name": "limit",
+          "default": 20,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "verify:list",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "verify",
+        "list.js"
+      ]
+    },
+    "verify:resend": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Verification ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Resend an OTP verification code",
+      "examples": [
+        "<%= config.bin %> verify resend ver_xxx",
+        "<%= config.bin %> verify resend ver_xxx --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "verify:resend",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "verify",
+        "resend.js"
+      ]
+    },
+    "verify:send": {
+      "aliases": [],
+      "args": {},
+      "description": "Send an OTP verification code",
+      "examples": [
+        "<%= config.bin %> verify send --to \"+1234567890\"",
+        "<%= config.bin %> verify send --to \"+1234567890\" --app-name \"MyApp\"",
+        "<%= config.bin %> verify send --to \"+1234567890\" --template tpl_preset_2fa",
+        "<%= config.bin %> verify send --to \"+1234567890\" --profile vp_xxx",
+        "<%= config.bin %> verify send --to \"+1234567890\" --code-length 8 --timeout 120"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "to": {
+          "char": "t",
+          "description": "Recipient phone number (E.164 format)",
+          "name": "to",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "app-name": {
+          "char": "a",
+          "description": "App name shown in message (defaults to your business name)",
+          "name": "app-name",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "template": {
+          "description": "Template ID to use (defaults to tpl_preset_otp)",
+          "name": "template",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "profile": {
+          "char": "p",
+          "description": "Verify profile ID for preconfigured settings",
+          "name": "profile",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "code-length": {
+          "description": "Length of OTP code (4-10, default: 6)",
+          "name": "code-length",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "timeout": {
+          "description": "Code validity in seconds (60-3600, default: 300)",
+          "name": "timeout",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "verify:send",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "verify",
+        "send.js"
+      ]
+    },
+    "verify:status": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Verification ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Get verification status",
+      "examples": [
+        "<%= config.bin %> verify status ver_xxx",
+        "<%= config.bin %> verify status ver_xxx --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "verify:status",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "verify",
+        "status.js"
+      ]
+    },
+    "templates:create": {
+      "aliases": [],
+      "args": {},
+      "description": "Create a new SMS template",
+      "examples": [
+        "<%= config.bin %> templates create --name \"My OTP\" --text \"Your code is {{code}}\"",
+        "<%= config.bin %> templates create --name \"Login\" --text \"{{code}} is your {{app_name}} login code\""
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "name": {
+          "char": "n",
+          "description": "Template name",
+          "name": "name",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "text": {
+          "char": "t",
+          "description": "Message text (use {{code}} and {{app_name}} variables)",
+          "name": "text",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "templates:create",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "templates",
+        "create.js"
+      ]
+    },
+    "templates:delete": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Template ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Delete a template",
+      "examples": [
+        "<%= config.bin %> templates delete tpl_xxx",
+        "<%= config.bin %> templates delete tpl_xxx --force"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "force": {
+          "char": "f",
+          "description": "Skip confirmation",
+          "name": "force",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "templates:delete",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "templates",
+        "delete.js"
+      ]
+    },
+    "templates:get": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Template ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Get template details",
+      "examples": [
+        "<%= config.bin %> templates get tpl_xxx",
+        "<%= config.bin %> templates get tpl_preset_2fa"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "templates:get",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "templates",
+        "get.js"
+      ]
+    },
+    "templates:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List your SMS templates",
+      "examples": [
+        "<%= config.bin %> templates list",
+        "<%= config.bin %> templates list --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "templates:list",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "templates",
+        "list.js"
+      ]
+    },
+    "templates:presets": {
+      "aliases": [],
+      "args": {},
+      "description": "List available preset templates",
+      "examples": [
+        "<%= config.bin %> templates presets",
+        "<%= config.bin %> templates presets --json"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "templates:presets",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "templates",
+        "presets.js"
+      ]
+    },
+    "templates:publish": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Template ID",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Publish a draft template (locks it for use)",
+      "examples": [
+        "<%= config.bin %> templates publish tpl_xxx"
+      ],
+      "flags": {
+        "json": {
+          "description": "Output in JSON format",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "quiet": {
+          "char": "q",
+          "description": "Minimal output",
+          "name": "quiet",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "templates:publish",
+      "pluginAlias": "@sendly/cli",
+      "pluginName": "@sendly/cli",
+      "pluginType": "core",
+      "strict": true,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "templates",
+        "publish.js"
+      ]
+    },
     "webhooks:create": {
       "aliases": [],
       "args": {},
@@ -1830,553 +2376,7 @@
         "webhooks",
         "update.js"
       ]
-    },
-    "templates:create": {
-      "aliases": [],
-      "args": {},
-      "description": "Create a new SMS template",
-      "examples": [
-        "<%= config.bin %> templates create --name \"My OTP\" --text \"Your code is {{code}}\"",
-        "<%= config.bin %> templates create --name \"Login\" --text \"{{code}} is your {{app_name}} login code\""
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "name": {
-          "char": "n",
-          "description": "Template name",
-          "name": "name",
-          "required": true,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "text": {
-          "char": "t",
-          "description": "Message text (use {{code}} and {{app_name}} variables)",
-          "name": "text",
-          "required": true,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "templates:create",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "templates",
-        "create.js"
-      ]
-    },
-    "templates:delete": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Template ID",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Delete a template",
-      "examples": [
-        "<%= config.bin %> templates delete tpl_xxx",
-        "<%= config.bin %> templates delete tpl_xxx --force"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "force": {
-          "char": "f",
-          "description": "Skip confirmation",
-          "name": "force",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "templates:delete",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "templates",
-        "delete.js"
-      ]
-    },
-    "templates:get": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Template ID",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Get template details",
-      "examples": [
-        "<%= config.bin %> templates get tpl_xxx",
-        "<%= config.bin %> templates get tpl_preset_2fa"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "templates:get",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "templates",
-        "get.js"
-      ]
-    },
-    "templates:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List your SMS templates",
-      "examples": [
-        "<%= config.bin %> templates list",
-        "<%= config.bin %> templates list --json"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "templates:list",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "templates",
-        "list.js"
-      ]
-    },
-    "templates:presets": {
-      "aliases": [],
-      "args": {},
-      "description": "List available preset templates",
-      "examples": [
-        "<%= config.bin %> templates presets",
-        "<%= config.bin %> templates presets --json"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "templates:presets",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "templates",
-        "presets.js"
-      ]
-    },
-    "templates:publish": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Template ID",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Publish a draft template (locks it for use)",
-      "examples": [
-        "<%= config.bin %> templates publish tpl_xxx"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "templates:publish",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "templates",
-        "publish.js"
-      ]
-    },
-    "verify:check": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Verification ID",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Verify an OTP code",
-      "examples": [
-        "<%= config.bin %> verify check ver_xxx --code 123456",
-        "<%= config.bin %> verify check ver_xxx -c 123456"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "code": {
-          "char": "c",
-          "description": "The OTP code to verify",
-          "name": "code",
-          "required": true,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "verify:check",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "verify",
-        "check.js"
-      ]
-    },
-    "verify:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List recent verifications",
-      "examples": [
-        "<%= config.bin %> verify list",
-        "<%= config.bin %> verify list --limit 10",
-        "<%= config.bin %> verify list --json"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "limit": {
-          "char": "n",
-          "description": "Number of verifications to show",
-          "name": "limit",
-          "default": 20,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "verify:list",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "verify",
-        "list.js"
-      ]
-    },
-    "verify:resend": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Verification ID",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Resend an OTP verification code",
-      "examples": [
-        "<%= config.bin %> verify resend ver_xxx",
-        "<%= config.bin %> verify resend ver_xxx --json"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "verify:resend",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "verify",
-        "resend.js"
-      ]
-    },
-    "verify:send": {
-      "aliases": [],
-      "args": {},
-      "description": "Send an OTP verification code",
-      "examples": [
-        "<%= config.bin %> verify send --to \"+1234567890\"",
-        "<%= config.bin %> verify send --to \"+1234567890\" --app-name \"MyApp\"",
-        "<%= config.bin %> verify send --to \"+1234567890\" --template tpl_preset_2fa",
-        "<%= config.bin %> verify send --to \"+1234567890\" --profile vp_xxx",
-        "<%= config.bin %> verify send --to \"+1234567890\" --code-length 8 --timeout 120"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "to": {
-          "char": "t",
-          "description": "Recipient phone number (E.164 format)",
-          "name": "to",
-          "required": true,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "app-name": {
-          "char": "a",
-          "description": "App name shown in message (defaults to your business name)",
-          "name": "app-name",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "template": {
-          "description": "Template ID to use (defaults to tpl_preset_otp)",
-          "name": "template",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "profile": {
-          "char": "p",
-          "description": "Verify profile ID for preconfigured settings",
-          "name": "profile",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "code-length": {
-          "description": "Length of OTP code (4-10, default: 6)",
-          "name": "code-length",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "timeout": {
-          "description": "Code validity in seconds (60-3600, default: 300)",
-          "name": "timeout",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "verify:send",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "verify",
-        "send.js"
-      ]
-    },
-    "verify:status": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Verification ID",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Get verification status",
-      "examples": [
-        "<%= config.bin %> verify status ver_xxx",
-        "<%= config.bin %> verify status ver_xxx --json"
-      ],
-      "flags": {
-        "json": {
-          "description": "Output in JSON format",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "quiet": {
-          "char": "q",
-          "description": "Minimal output",
-          "name": "quiet",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "verify:status",
-      "pluginAlias": "@sendly/cli",
-      "pluginName": "@sendly/cli",
-      "pluginType": "core",
-      "strict": true,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "verify",
-        "status.js"
-      ]
     }
   },
-  "version": "3.8.2"
+  "version": "3.12.0"
 }

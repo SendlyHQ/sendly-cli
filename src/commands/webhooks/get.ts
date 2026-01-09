@@ -81,7 +81,9 @@ export default class WebhooksGet extends AuthenticatedCommand {
             ? colors.error("open")
             : colors.warning("half_open"),
       "Failure Count": String(webhook.failure_count),
-      "Secret Version": String(webhook.secret_version),
+      "Secret Version": webhook.secret_version
+        ? String(webhook.secret_version)
+        : "1",
       Created: formatDate(webhook.created_at),
       Updated: formatDate(webhook.updated_at),
     });

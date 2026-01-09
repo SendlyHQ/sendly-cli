@@ -206,6 +206,159 @@ This creates a secure tunnel and displays:
 - Webhook secret for signature verification
 - Real-time event stream
 
+#### Create Webhook
+
+```bash
+sendly webhooks create --url https://myapp.com/webhook --events message.delivered,message.failed
+
+# With description and mode
+sendly webhooks create \
+  --url https://myapp.com/webhook \
+  --events message.delivered,message.failed,message.bounced \
+  --description "Production webhook" \
+  --mode live
+```
+
+#### Get Webhook Details
+
+```bash
+sendly webhooks get whk_abc123
+```
+
+#### Update Webhook
+
+```bash
+sendly webhooks update whk_abc123 --url https://newdomain.com/webhook
+
+# Update events
+sendly webhooks update whk_abc123 --events message.delivered,message.bounced
+
+# Disable webhook
+sendly webhooks update whk_abc123 --active false
+```
+
+#### Delete Webhook
+
+```bash
+sendly webhooks delete whk_abc123
+
+# Skip confirmation
+sendly webhooks delete whk_abc123 --yes
+```
+
+#### Test Webhook
+
+```bash
+sendly webhooks test whk_abc123
+```
+
+#### View Delivery History
+
+```bash
+sendly webhooks deliveries whk_abc123
+
+# Show only failed deliveries
+sendly webhooks deliveries whk_abc123 --failed-only --limit 20
+```
+
+#### Rotate Webhook Secret
+
+```bash
+sendly webhooks rotate-secret whk_abc123
+```
+
+Note: Old secret remains valid for 24 hours during migration.
+
+### Verification (OTP) Commands
+
+#### Send OTP
+
+```bash
+sendly verify send --to "+15551234567"
+
+# With custom app name
+sendly verify send --to "+15551234567" --app-name "MyApp"
+
+# With template
+sendly verify send --to "+15551234567" --template tpl_preset_2fa
+
+# Custom code length and timeout
+sendly verify send --to "+15551234567" --code-length 6 --timeout 300
+```
+
+#### Check OTP Code
+
+```bash
+sendly verify check ver_abc123 --code 123456
+```
+
+#### Get Verification Status
+
+```bash
+sendly verify status ver_abc123
+```
+
+#### List Recent Verifications
+
+```bash
+sendly verify list
+
+# Limit results
+sendly verify list --limit 10
+```
+
+#### Resend OTP
+
+```bash
+sendly verify resend ver_abc123
+```
+
+### Template Commands
+
+#### List Templates
+
+```bash
+sendly templates list
+```
+
+#### Get Template Details
+
+```bash
+sendly templates get tpl_abc123
+
+# Get a preset template
+sendly templates get tpl_preset_2fa
+```
+
+#### Create Template
+
+```bash
+sendly templates create --name "My OTP" --text "Your code is {{code}}"
+```
+
+Supported variables: `{{code}}`, `{{app_name}}`
+
+#### Publish Template
+
+```bash
+sendly templates publish tpl_abc123
+```
+
+#### Delete Template
+
+```bash
+sendly templates delete tpl_abc123
+
+# Skip confirmation
+sendly templates delete tpl_abc123 --force
+```
+
+#### List Preset Templates
+
+```bash
+sendly templates presets
+```
+
 ### Logs Commands
 
 #### Tail Logs
@@ -252,6 +405,29 @@ This checks:
 - API connectivity
 - Configuration validity
 - Network issues
+
+### Utility Commands
+
+#### Account Status Dashboard
+
+```bash
+sendly status
+```
+
+Shows account overview including:
+- Verification status and tier
+- Credit balance
+- Active API keys and webhooks
+- Recent messages
+
+#### Trigger Test Event
+
+For testing with `webhooks listen`:
+
+```bash
+sendly trigger message.delivered
+sendly trigger message.bounced
+```
 
 ## Environment Variables
 

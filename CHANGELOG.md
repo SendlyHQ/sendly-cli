@@ -1,5 +1,33 @@
 # @sendly/cli
 
+## 3.12.0
+
+### Minor Changes
+
+- feat: add `message.bounced` event support
+
+  **New Trigger Event:**
+  
+  Test bounced message handling with the trigger command:
+  
+  ```bash
+  sendly trigger message.bounced
+  ```
+
+  **Webhook Events:**
+  
+  Subscribe to bounce events when creating webhooks:
+  
+  ```bash
+  sendly webhooks create \
+    --url https://yourapp.com/webhook \
+    --events message.delivered,message.failed,message.bounced
+  ```
+
+### Patch Changes
+
+- fix: webhook details now correctly displays secret version
+
 ## 3.11.0
 
 ### Minor Changes
