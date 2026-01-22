@@ -48,22 +48,27 @@ export interface RateLimitInfo {
 }
 
 export class ApiError extends Error {
+  public hint?: string;
+
   constructor(
     public code: string,
     message: string,
     public statusCode: number,
     public details?: Record<string, unknown>,
+    hint?: string,
   ) {
     super(message);
     this.name = "ApiError";
+    this.hint = hint;
   }
 }
 
 export class AuthenticationError extends ApiError {
   constructor(
-    message: string = "Not authenticated. Run 'sendly login' first.",
+    message: string = "Authentication failed",
+    hint: string = "Run 'sendly login' to authenticate, or check your API key with 'sendly config show'",
   ) {
-    super("authentication_error", message, 401);
+    super("authentication_error", message, 401, undefined, hint);
     this.name = "AuthenticationError";
   }
 }
@@ -83,15 +88,39 @@ export class RateLimitError extends ApiError {
     public retryAfter: number,
     message: string = "Rate limit exceeded",
   ) {
-    super("rate_limit_exceeded", message, 429);
+    const hint = `Wait ${retryAfter} seconds before retrying, or upgrade your plan for higher limits`;
+    super("rate_limit_exceeded", message, 429, undefined, hint);
     this.name = "RateLimitError";
   }
 }
 
 export class InsufficientCreditsError extends ApiError {
   constructor(message: string = "Insufficient credits") {
-    super("insufficient_credits", message, 402);
+    const hint =
+      "Check your balance with 'sendly credits', or add credits at https://sendly.live/dashboard/billing";
+    super("insufficient_credits", message, 402, undefined, hint);
     this.name = "InsufficientCreditsError";
+  }
+}
+
+export class NotFoundError extends ApiError {
+  constructor(
+    message: string = "Resource not found",
+    hint: string = "Verify the ID is correct, or use a list command to see available resources",
+  ) {
+    super("not_found", message, 404, undefined, hint);
+    this.name = "NotFoundError";
+  }
+}
+
+export class ValidationError extends ApiError {
+  constructor(
+    message: string = "Validation failed",
+    details?: Record<string, unknown>,
+  ) {
+    const hint = "Check the command help with --help for valid options and formats";
+    super("validation_error", message, 400, details, hint);
+    this.name = "ValidationError";
   }
 }
 
@@ -226,13 +255,21 @@ class ApiClient {
           );
         }
         throw new AuthenticationError(message);
+      case 400:
+        throw new ValidationError(message, details);
       case 402:
         throw new InsufficientCreditsError(message);
+      case 404:
+        throw new NotFoundError(message);
       case 429:
         const retryAfter = data?.retryAfter || 60;
         throw new RateLimitError(retryAfter, message);
       default:
-        throw new ApiError(error, message, statusCode, details);
+        const defaultHint =
+          statusCode >= 500
+            ? "This is a server error. Try again later or check https://status.sendly.live"
+            : undefined;
+        throw new ApiError(error, message, statusCode, details, defaultHint);
     }
   }
 

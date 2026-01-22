@@ -10,6 +10,10 @@ import {
   ApiError,
   AuthenticationError,
   ApiKeyRequiredError,
+  RateLimitError,
+  InsufficientCreditsError,
+  NotFoundError,
+  ValidationError,
 } from "./api-client.js";
 
 export abstract class BaseCommand extends Command {
@@ -46,8 +50,38 @@ export abstract class BaseCommand extends Command {
     }
 
     if (err instanceof AuthenticationError) {
-      error("Not authenticated", {
-        hint: "Run 'sendly login' to authenticate",
+      error(err.message, {
+        hint: err.hint,
+      });
+      this.exit(1);
+    }
+
+    if (err instanceof RateLimitError) {
+      error(err.message, {
+        "Retry after": `${err.retryAfter} seconds`,
+        hint: err.hint,
+      });
+      this.exit(1);
+    }
+
+    if (err instanceof InsufficientCreditsError) {
+      error(err.message, {
+        hint: err.hint,
+      });
+      this.exit(1);
+    }
+
+    if (err instanceof NotFoundError) {
+      error(err.message, {
+        hint: err.hint,
+      });
+      this.exit(1);
+    }
+
+    if (err instanceof ValidationError) {
+      error(err.message, {
+        hint: err.hint,
+        ...(err.details || {}),
       });
       this.exit(1);
     }
@@ -55,6 +89,7 @@ export abstract class BaseCommand extends Command {
     if (err instanceof ApiError) {
       error(err.message, {
         code: err.code,
+        ...(err.hint && { hint: err.hint }),
         ...(err.details || {}),
       });
       this.exit(1);
