@@ -1,4 +1,4 @@
-import { Args, Flags } from "@oclif/core";
+import { Args } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
 import { apiClient } from "../../lib/api-client.js";
 import {
@@ -7,19 +7,32 @@ import {
   info,
   colors,
   isJsonMode,
+  formatRelativeTime,
 } from "../../lib/output.js";
 
-interface UsageEntry {
-  date: string;
-  requests: number;
-  messagesSent: number;
+interface RecentRequest {
+  endpoint: string;
+  method: string;
+  statusCode: number;
   creditsUsed: number;
+  createdAt: string;
+}
+
+interface EndpointBreakdown {
+  endpoint: string;
+  count: number;
 }
 
 interface UsageResponse {
   keyId: string;
   keyName: string;
-  usage: UsageEntry[];
+  summary: {
+    totalRequests: number;
+    totalCredits: number;
+    lastUsed: string | null;
+  };
+  recentRequests: RecentRequest[];
+  endpointBreakdown: EndpointBreakdown[];
 }
 
 export default class KeysUsage extends AuthenticatedCommand {
@@ -27,7 +40,6 @@ export default class KeysUsage extends AuthenticatedCommand {
 
   static examples = [
     "<%= config.bin %> keys usage KEY_ID",
-    "<%= config.bin %> keys usage KEY_ID --days 7",
     "<%= config.bin %> keys usage KEY_ID --json",
   ];
 
@@ -40,15 +52,10 @@ export default class KeysUsage extends AuthenticatedCommand {
 
   static flags = {
     ...AuthenticatedCommand.baseFlags,
-    days: Flags.integer({
-      char: "d",
-      description: "Number of days to show (default: 30)",
-      default: 30,
-    }),
   };
 
   async run(): Promise<void> {
-    const { args, flags } = await this.parse(KeysUsage);
+    const { args } = await this.parse(KeysUsage);
 
     const response = await apiClient.get<UsageResponse>(
       `/api/v1/account/keys/${args.id}/usage`,
@@ -59,54 +66,82 @@ export default class KeysUsage extends AuthenticatedCommand {
       return;
     }
 
-    const usage = response.usage.slice(0, flags.days);
+    console.log();
+    console.log(colors.bold(`Usage for "${response.keyName}"`));
+    console.log();
 
-    if (usage.length === 0) {
-      info(`No usage data found for key "${response.keyName}"`);
-      return;
+    console.log(`  ${colors.dim("Total Requests:")}  ${colors.info(String(response.summary.totalRequests))}`);
+    console.log(`  ${colors.dim("Total Credits:")}   ${colors.warning(String(response.summary.totalCredits))}`);
+    console.log(`  ${colors.dim("Last Used:")}       ${response.summary.lastUsed ? formatRelativeTime(response.summary.lastUsed) : colors.dim("never")}`);
+
+    if (response.endpointBreakdown.length > 0) {
+      console.log();
+      console.log(colors.bold("Endpoint Breakdown"));
+      console.log();
+
+      table(response.endpointBreakdown.slice(0, 10), [
+        {
+          header: "Endpoint",
+          key: "endpoint",
+          width: 40,
+        },
+        {
+          header: "Requests",
+          key: "count",
+          width: 10,
+          formatter: (v) => colors.info(String(v)),
+        },
+      ]);
     }
 
-    const totalRequests = usage.reduce((sum, u) => sum + u.requests, 0);
-    const totalMessages = usage.reduce((sum, u) => sum + u.messagesSent, 0);
-    const totalCredits = usage.reduce((sum, u) => sum + u.creditsUsed, 0);
+    if (response.recentRequests.length > 0) {
+      console.log();
+      console.log(colors.bold("Recent Requests"));
+      console.log();
 
-    console.log();
-    console.log(
-      colors.bold(`Usage for "${response.keyName}" (last ${usage.length} days)`),
-    );
-    console.log();
+      table(response.recentRequests.slice(0, 10), [
+        {
+          header: "Endpoint",
+          key: "endpoint",
+          width: 25,
+          formatter: (v) => {
+            const s = String(v);
+            return s.length > 22 ? s.slice(0, 22) + "..." : s;
+          },
+        },
+        {
+          header: "Method",
+          key: "method",
+          width: 8,
+        },
+        {
+          header: "Status",
+          key: "statusCode",
+          width: 8,
+          formatter: (v) => {
+            const code = Number(v);
+            if (code >= 200 && code < 300) return colors.success(String(code));
+            if (code >= 400) return colors.error(String(code));
+            return String(code);
+          },
+        },
+        {
+          header: "Credits",
+          key: "creditsUsed",
+          width: 8,
+          formatter: (v) => (v ? colors.warning(String(v)) : colors.dim("0")),
+        },
+        {
+          header: "Time",
+          key: "createdAt",
+          width: 12,
+          formatter: (v) => formatRelativeTime(String(v)),
+        },
+      ]);
+    }
 
-    table(usage, [
-      {
-        header: "Date",
-        key: "date",
-        width: 12,
-        formatter: (v) => String(v).slice(0, 10),
-      },
-      {
-        header: "Requests",
-        key: "requests",
-        width: 10,
-        formatter: (v) => colors.info(String(v)),
-      },
-      {
-        header: "Messages",
-        key: "messagesSent",
-        width: 10,
-        formatter: (v) => colors.success(String(v)),
-      },
-      {
-        header: "Credits",
-        key: "creditsUsed",
-        width: 10,
-        formatter: (v) => colors.warning(String(v)),
-      },
-    ]);
-
-    console.log();
-    console.log(colors.dim("─".repeat(44)));
-    console.log(
-      `  ${colors.bold("Total:")}  ${colors.info(String(totalRequests))} requests, ${colors.success(String(totalMessages))} messages, ${colors.warning(String(totalCredits))} credits`,
-    );
+    if (response.summary.totalRequests === 0) {
+      info("No usage recorded yet for this key");
+    }
   }
 }
