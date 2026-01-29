@@ -16,6 +16,9 @@ interface CampaignPreview {
     creditsPerMessage: number;
     totalCredits: number;
   }>;
+  blockedCount?: number;
+  sendableCount?: number;
+  warnings?: string[];
 }
 
 export default class CampaignsPreview extends AuthenticatedCommand {
@@ -72,6 +75,20 @@ export default class CampaignsPreview extends AuthenticatedCommand {
         `You need ${preview.estimatedCredits - preview.currentBalance} more credits to send this campaign.`,
       );
       console.log(colors.dim(`  Top up at: https://sendly.live/billing`));
+    }
+
+    if (preview.blockedCount && preview.blockedCount > 0) {
+      console.log();
+      warn(
+        `${preview.blockedCount} of ${preview.recipientCount} recipients cannot be reached with your current verification.`,
+      );
+    }
+
+    if (preview.warnings && preview.warnings.length > 0) {
+      console.log();
+      for (const w of preview.warnings) {
+        warn(w);
+      }
     }
 
     if (preview.breakdown && preview.breakdown.length > 0) {

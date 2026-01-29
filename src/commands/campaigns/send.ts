@@ -1,7 +1,14 @@
 import { Args, Flags } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
 import { apiClient } from "../../lib/api-client.js";
-import { json, success, colors, isJsonMode, keyValue, warn } from "../../lib/output.js";
+import {
+  json,
+  success,
+  colors,
+  isJsonMode,
+  keyValue,
+  warn,
+} from "../../lib/output.js";
 import * as readline from "readline";
 
 interface Campaign {
@@ -17,6 +24,9 @@ interface CampaignPreview {
   estimatedCredits: number;
   currentBalance: number;
   hasEnoughCredits: boolean;
+  blockedCount?: number;
+  sendableCount?: number;
+  warnings?: string[];
 }
 
 async function confirm(message: string): Promise<boolean> {
@@ -70,6 +80,28 @@ export default class CampaignsSend extends AuthenticatedCommand {
       );
       console.log(colors.dim(`  Top up at: https://sendly.live/billing`));
       this.exit(1);
+    }
+
+    if (preview.sendableCount === 0) {
+      warn("No recipients can be reached with your current verification.");
+      if (preview.warnings) {
+        for (const w of preview.warnings) {
+          warn(w);
+        }
+      }
+      this.exit(1);
+    }
+
+    if (preview.blockedCount && preview.blockedCount > 0) {
+      warn(
+        `${preview.blockedCount} of ${preview.recipientCount} recipients cannot be reached with your current verification.`,
+      );
+    }
+
+    if (preview.warnings && preview.warnings.length > 0) {
+      for (const w of preview.warnings) {
+        warn(w);
+      }
     }
 
     if (!flags.yes && !isJsonMode()) {
