@@ -15,7 +15,7 @@ interface Campaign {
   id: string;
   name: string;
   status: string;
-  recipientCount: number;
+  totalRecipients: number;
   estimatedCredits: number;
 }
 
@@ -138,7 +138,7 @@ export default class CampaignsSend extends AuthenticatedCommand {
     keyValue([
       ["Campaign", campaign.name],
       ["Status", colors.info("sending")],
-      ["Recipients", String(campaign.recipientCount)],
+      ["Recipients", String(campaign.totalRecipients)],
     ]);
 
     console.log();

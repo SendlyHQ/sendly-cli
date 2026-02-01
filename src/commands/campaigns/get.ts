@@ -6,11 +6,11 @@ import { json, colors, isJsonMode, keyValue } from "../../lib/output.js";
 interface Campaign {
   id: string;
   name: string;
-  text: string;
-  templateId?: string;
-  contactListIds: string[];
+  messageText: string;
+  targetType: string;
+  targetListId?: string;
   status: string;
-  recipientCount: number;
+  totalRecipients: number;
   sentCount: number;
   deliveredCount: number;
   failedCount: number;
@@ -18,7 +18,7 @@ interface Campaign {
   creditsUsed: number;
   scheduledAt?: string;
   timezone?: string;
-  startedAt?: string;
+  sentAt?: string;
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -32,10 +32,8 @@ function formatStatus(status: string): string {
       return colors.warning("Scheduled");
     case "sending":
       return colors.info("Sending");
-    case "sent":
-      return colors.success("Sent");
-    case "paused":
-      return colors.warning("Paused");
+    case "completed":
+      return colors.success("Completed");
     case "cancelled":
       return colors.dim("Cancelled");
     case "failed":
@@ -83,12 +81,20 @@ export default class CampaignsGet extends AuthenticatedCommand {
     keyValue([
       ["ID", campaign.id],
       ["Status", formatStatus(campaign.status)],
-      ["Recipients", String(campaign.recipientCount)],
-      ...(campaign.status === "sent" || campaign.status === "sending"
+      ["Recipients", String(campaign.totalRecipients)],
+      ...(campaign.status === "completed" || campaign.status === "sending"
         ? [
             ["Sent", String(campaign.sentCount)] as [string, string],
-            ["Delivered", colors.success(String(campaign.deliveredCount))] as [string, string],
-            ["Failed", campaign.failedCount > 0 ? colors.error(String(campaign.failedCount)) : "0"] as [string, string],
+            ["Delivered", colors.success(String(campaign.deliveredCount))] as [
+              string,
+              string,
+            ],
+            [
+              "Failed",
+              campaign.failedCount > 0
+                ? colors.error(String(campaign.failedCount))
+                : "0",
+            ] as [string, string],
           ]
         : []),
       ["Estimated Credits", String(campaign.estimatedCredits)],
@@ -96,30 +102,43 @@ export default class CampaignsGet extends AuthenticatedCommand {
         ? [["Credits Used", String(campaign.creditsUsed)] as [string, string]]
         : []),
       ...(campaign.scheduledAt
-        ? [["Scheduled For", new Date(campaign.scheduledAt).toLocaleString()] as [string, string]]
+        ? [
+            [
+              "Scheduled For",
+              new Date(campaign.scheduledAt).toLocaleString(),
+            ] as [string, string],
+          ]
         : []),
       ...(campaign.timezone
         ? [["Timezone", campaign.timezone] as [string, string]]
         : []),
       ["Created", new Date(campaign.createdAt).toLocaleString()],
-      ...(campaign.startedAt
-        ? [["Started", new Date(campaign.startedAt).toLocaleString()] as [string, string]]
+      ...(campaign.sentAt
+        ? [
+            ["Started", new Date(campaign.sentAt).toLocaleString()] as [
+              string,
+              string,
+            ],
+          ]
         : []),
       ...(campaign.completedAt
-        ? [["Completed", new Date(campaign.completedAt).toLocaleString()] as [string, string]]
+        ? [
+            ["Completed", new Date(campaign.completedAt).toLocaleString()] as [
+              string,
+              string,
+            ],
+          ]
         : []),
     ]);
 
     console.log();
     console.log(colors.dim("Message:"));
-    console.log(`  ${campaign.text}`);
+    console.log(`  ${campaign.messageText}`);
 
-    if (campaign.contactListIds.length > 0) {
+    if (campaign.targetListId) {
       console.log();
-      console.log(colors.dim("Contact Lists:"));
-      campaign.contactListIds.forEach((id) => {
-        console.log(`  - ${id}`);
-      });
+      console.log(colors.dim("Contact List:"));
+      console.log(`  ${campaign.targetListId}`);
     }
   }
 }

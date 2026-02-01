@@ -55,8 +55,8 @@ export default class CampaignsDelete extends AuthenticatedCommand {
       `/api/v1/campaigns/${args.id}`,
     );
 
-    if (!["draft", "cancelled"].includes(campaign.status)) {
-      warn(`Cannot delete a campaign with status "${campaign.status}". Only draft and cancelled campaigns can be deleted.`);
+    if (campaign.status === "sending") {
+      warn(`Cannot delete a campaign that is currently sending.`);
       this.exit(1);
     }
 

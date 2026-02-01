@@ -13,9 +13,9 @@ import {
 interface Campaign {
   id: string;
   name: string;
-  text: string;
+  messageText: string;
   status: string;
-  recipientCount: number;
+  totalRecipients: number;
   sentCount: number;
   deliveredCount: number;
   failedCount: number;
@@ -39,10 +39,8 @@ function formatCampaignStatus(status: string): string {
       return colors.warning("scheduled");
     case "sending":
       return colors.info("sending");
-    case "sent":
-      return colors.success("sent");
-    case "paused":
-      return colors.warning("paused");
+    case "completed":
+      return colors.success("completed");
     case "cancelled":
       return colors.dim("cancelled");
     case "failed":
@@ -75,7 +73,8 @@ export default class CampaignsList extends AuthenticatedCommand {
     }),
     status: Flags.string({
       char: "s",
-      description: "Filter by status (draft, scheduled, sending, sent, cancelled)",
+      description:
+        "Filter by status (draft, scheduled, sending, sent, cancelled)",
     }),
   };
 
@@ -103,7 +102,9 @@ export default class CampaignsList extends AuthenticatedCommand {
 
     console.log();
     console.log(
-      colors.dim(`Showing ${response.campaigns.length} of ${response.total} campaigns`),
+      colors.dim(
+        `Showing ${response.campaigns.length} of ${response.total} campaigns`,
+      ),
     );
     console.log();
 
@@ -131,7 +132,7 @@ export default class CampaignsList extends AuthenticatedCommand {
       },
       {
         header: "Recipients",
-        key: "recipientCount",
+        key: "totalRecipients",
         width: 11,
         formatter: (v) => String(v),
       },
@@ -141,8 +142,11 @@ export default class CampaignsList extends AuthenticatedCommand {
         width: 10,
         formatter: (v, row) => {
           const campaign = row as Campaign;
-          if (campaign.status === "sent" || campaign.status === "sending") {
-            return `${v}/${campaign.recipientCount}`;
+          if (
+            campaign.status === "completed" ||
+            campaign.status === "sending"
+          ) {
+            return `${v}/${campaign.totalRecipients}`;
           }
           return "-";
         },

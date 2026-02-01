@@ -1,13 +1,19 @@
 import { Args, Flags } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
 import { apiClient } from "../../lib/api-client.js";
-import { json, success, colors, isJsonMode, keyValue } from "../../lib/output.js";
+import {
+  json,
+  success,
+  colors,
+  isJsonMode,
+  keyValue,
+} from "../../lib/output.js";
 
 interface Campaign {
   id: string;
   name: string;
   status: string;
-  recipientCount: number;
+  totalRecipients: number;
   estimatedCredits: number;
   scheduledAt: string;
   timezone?: string;
@@ -45,7 +51,9 @@ export default class CampaignsSchedule extends AuthenticatedCommand {
 
     const scheduledAt = new Date(flags.at);
     if (isNaN(scheduledAt.getTime())) {
-      this.error("Invalid date format. Use ISO 8601 format (e.g., 2024-01-15T10:00:00Z)");
+      this.error(
+        "Invalid date format. Use ISO 8601 format (e.g., 2024-01-15T10:00:00Z)",
+      );
     }
 
     if (scheduledAt <= new Date()) {
@@ -71,9 +79,11 @@ export default class CampaignsSchedule extends AuthenticatedCommand {
     keyValue([
       ["Campaign", campaign.name],
       ["Status", colors.warning("scheduled")],
-      ["Recipients", String(campaign.recipientCount)],
+      ["Recipients", String(campaign.totalRecipients)],
       ["Scheduled For", new Date(campaign.scheduledAt).toLocaleString()],
-      ...(campaign.timezone ? [["Timezone", campaign.timezone] as [string, string]] : []),
+      ...(campaign.timezone
+        ? [["Timezone", campaign.timezone] as [string, string]]
+        : []),
     ]);
 
     console.log();
