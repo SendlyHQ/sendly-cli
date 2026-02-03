@@ -1,7 +1,7 @@
 import { BaseCommand } from "../lib/base-command.js";
 import { getAuthInfo } from "../lib/auth.js";
 import { success, info, keyValue, colors, json } from "../lib/output.js";
-import { getConfigValue, getConfigPath } from "../lib/config.js";
+import { getConfigValue, getConfigPath, getCurrentOrg } from "../lib/config.js";
 
 export default class Whoami extends BaseCommand {
   static description = "Show current authentication status";
@@ -17,6 +17,8 @@ export default class Whoami extends BaseCommand {
 
     const authInfo = await getAuthInfo();
 
+    const org = getCurrentOrg();
+
     if (flags.json) {
       json({
         authenticated: authInfo.authenticated,
@@ -25,6 +27,7 @@ export default class Whoami extends BaseCommand {
         environment: authInfo.environment,
         keyType: authInfo.keyType,
         configPath: getConfigPath(),
+        organization: org ? { id: org.id, name: org.name, slug: org.slug } : null,
       });
       return;
     }
@@ -60,6 +63,10 @@ export default class Whoami extends BaseCommand {
     const baseUrl = getConfigValue("baseUrl");
     if (baseUrl && baseUrl !== "https://sendly.live") {
       displayData["Server"] = colors.dim(baseUrl);
+    }
+
+    if (org) {
+      displayData["Team"] = colors.primary(org.name) + colors.dim(` (${org.id})`);
     }
 
     displayData["Config"] = colors.dim(getConfigPath());

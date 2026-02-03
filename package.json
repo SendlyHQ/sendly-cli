@@ -52,6 +52,9 @@
       },
       "config": {
         "description": "Manage CLI configuration"
+      },
+      "teams": {
+        "description": "Manage teams and organizations"
       }
     }
   },

@@ -146,6 +146,11 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
+    const orgId = getEffectiveValue("currentOrgId");
+    if (orgId) {
+      headers["X-Organization-Id"] = orgId;
+    }
+
     return headers;
   }
 

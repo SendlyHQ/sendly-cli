@@ -9,6 +9,7 @@
  * - SENDLY_NO_COLOR: Disable colored output (any value)
  * - SENDLY_TIMEOUT: Request timeout in ms (default: 30000)
  * - SENDLY_MAX_RETRIES: Max retry attempts (default: 3)
+ * - SENDLY_ORG_ID: Override active organization ID
  * - SENDLY_CONFIG_KEY: Custom encryption key (for CI/CD)
  * - CI: Auto-detect CI mode (disables interactive prompts)
  */
@@ -39,6 +40,11 @@ export interface SendlyConfig {
   // Network
   timeout: number;
   maxRetries: number;
+
+  // Organization
+  currentOrgId?: string;
+  currentOrgName?: string;
+  currentOrgSlug?: string;
 }
 
 /**
@@ -248,6 +254,11 @@ export function getEffectiveValue<K extends keyof SendlyConfig>(
         }
       }
       break;
+    case "currentOrgId":
+      if (process.env.SENDLY_ORG_ID) {
+        return process.env.SENDLY_ORG_ID as SendlyConfig[K];
+      }
+      break;
   }
 
   // Fall back to config file value
@@ -352,6 +363,29 @@ export function getConfigPath(): string {
 
 export function getConfigDir(): string {
   return CONFIG_DIR;
+}
+
+export function setCurrentOrg(id: string, name: string, slug?: string): void {
+  config.set("currentOrgId", id);
+  config.set("currentOrgName", name);
+  if (slug) config.set("currentOrgSlug", slug);
+}
+
+export function getCurrentOrg(): {
+  id: string;
+  name: string;
+  slug?: string;
+} | null {
+  const id = getEffectiveValue("currentOrgId");
+  const name = config.get("currentOrgName");
+  if (!id) return null;
+  return { id, name: name || id, slug: config.get("currentOrgSlug") };
+}
+
+export function clearCurrentOrg(): void {
+  config.delete("currentOrgId");
+  config.delete("currentOrgName");
+  config.delete("currentOrgSlug");
 }
 
 export { config };
