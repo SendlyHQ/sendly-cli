@@ -134,6 +134,7 @@ export async function browserLogin(): Promise<TokenResponse> {
 
       if (tokenResponse.ok) {
         const tokens = (await tokenResponse.json()) as TokenResponse;
+        spin.succeed("Authorized");
 
         // Store tokens
         setAuthTokens(
