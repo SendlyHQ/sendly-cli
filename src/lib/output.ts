@@ -217,7 +217,8 @@ export function formatRelativeTime(date: string | Date | number): string {
 }
 
 // Format credits
-export function formatCredits(credits: number): string {
+export function formatCredits(credits: number | undefined | null): string {
+  if (credits == null) return "—";
   return `${credits.toLocaleString()} credits`;
 }
 

@@ -98,7 +98,7 @@ export default class SmsSend extends AuthenticatedCommand {
         ID: response.id,
         To: response.to,
         Status: formatStatus(response.status),
-        Segments: response.segments,
+        ...(response.segments != null && { Segments: response.segments }),
         Credits: formatCredits(response.creditsUsed),
       });
     } catch (err) {
