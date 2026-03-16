@@ -87,7 +87,7 @@ export default class SmsSchedule extends AuthenticatedCommand {
       this.exit(1);
     }
 
-    // Check scheduling time constraints (Telnyx requires 5 min - 5 days)
+    // Check scheduling time constraints (carrier requires 5 min - 5 days)
     const FIVE_MINUTES = 5 * 60 * 1000;
     const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
     const timeUntilSend = scheduledDate.getTime() - Date.now();

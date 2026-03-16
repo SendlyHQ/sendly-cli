@@ -315,7 +315,7 @@
 - [`17e3435`](https://github.com/SendlyHQ/sendly/commit/17e343517764981741cfbae521cf5a5251895d36) Thanks [@SendlyHQ](https://github.com/SendlyHQ)! - ## Critical Bug Fixes
 
   ### Toll-Free Verification Status
-  - Fixed: Telnyx returns `"Verified"` status but code only checked for `"approved"`
+  - Fixed: Carrier returns `"Verified"` status but code only checked for `"approved"`
   - Impact: Toll-free verified users can now send SMS correctly
 
   ### SDK Fixes
@@ -473,7 +473,7 @@
 
 - ## Bug Fixes
   - **sms batch**: Fixed "Queued: undefined" display when API doesn't return queued count
-  - **sms schedule**: Fixed time validation to enforce Telnyx's actual limits:
+  - **sms schedule**: Fixed time validation to enforce carrier's actual limits:
     - Minimum: 5 minutes in the future (was incorrectly 1 minute)
     - Maximum: 5 days in the future (was incorrectly 7 days)
   - **login**: Fixed duplicate error messages appearing on failed login attempts
