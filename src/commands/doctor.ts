@@ -65,6 +65,7 @@ export default class Doctor extends BaseCommand {
     await this.checkCredits();
     await this.checkEnvironment();
     await this.checkConfig();
+    await this.checkAiAgents();
 
     // Generate report
     const report = this.generateReport();
@@ -379,6 +380,51 @@ export default class Doctor extends BaseCommand {
         name: "Config",
         status: "ok",
         message: configPath,
+      });
+    }
+  }
+
+  private async checkAiAgents(): Promise<void> {
+    const detected: string[] = [];
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+
+    const checks = [
+      { name: "Cursor", paths: [path.join(home, ".cursor")] },
+      { name: "Claude Desktop", paths: [
+        path.join(home, "Library", "Application Support", "Claude"),
+        path.join(home, ".config", "claude"),
+      ]},
+      { name: "VS Code MCP", paths: [
+        path.join(process.cwd(), ".vscode", "mcp.json"),
+        path.join(home, ".vscode", "mcp.json"),
+      ]},
+      { name: "Claude Code", paths: [
+        path.join(home, ".claude"),
+      ]},
+    ];
+
+    for (const check of checks) {
+      for (const p of check.paths) {
+        if (fs.existsSync(p)) {
+          detected.push(check.name);
+          break;
+        }
+      }
+    }
+
+    if (detected.length > 0) {
+      this.addResult({
+        name: "AI Agents",
+        status: "ok",
+        message: `Detected: ${detected.join(", ")}`,
+        details: "Use @sendly/mcp for AI agent SMS integration",
+      });
+    } else {
+      this.addResult({
+        name: "AI Agents",
+        status: "ok",
+        message: "None detected",
+        details: "Install @sendly/mcp for AI agent integration",
       });
     }
   }

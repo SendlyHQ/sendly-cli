@@ -33,7 +33,7 @@ export abstract class BaseCommand extends Command {
     await super.init();
     const { flags } = await this.parse(this.constructor as typeof BaseCommand);
 
-    if (flags.json) {
+    if (flags.json || !process.stdout.isTTY) {
       setOutputFormat("json");
     }
     if (flags.quiet) {

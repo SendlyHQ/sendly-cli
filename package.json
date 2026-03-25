@@ -77,6 +77,12 @@
       },
       "enterprise quota": {
         "description": "Manage workspace message quotas"
+      },
+      "rules": {
+        "description": "Manage auto-labeling rules for AI classification"
+      },
+      "events": {
+        "description": "Listen to real-time events"
       }
     }
   },
@@ -84,6 +90,7 @@
     "@oclif/core": "^3.27.0",
     "@oclif/plugin-help": "^6.2.0",
     "chalk": "^5.3.0",
+    "chrono-node": "^2.9.0",
     "cli-table3": "^0.6.5",
     "conf": "^12.0.0",
     "inquirer": "^9.2.23",

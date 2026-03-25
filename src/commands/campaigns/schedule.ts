@@ -6,8 +6,11 @@ import {
   success,
   colors,
   isJsonMode,
+  isQuietMode,
   keyValue,
+  info,
 } from "../../lib/output.js";
+import * as chrono from "chrono-node";
 
 interface Campaign {
   id: string;
@@ -20,11 +23,12 @@ interface Campaign {
 }
 
 export default class CampaignsSchedule extends AuthenticatedCommand {
-  static description = "Schedule a campaign for later";
+  static description = 'Schedule a campaign for later. Supports natural language dates like "tomorrow at 9am".';
 
   static examples = [
-    '<%= config.bin %> campaigns schedule cmp_xxx --at "2024-01-15T10:00:00Z"',
-    '<%= config.bin %> campaigns schedule cmp_xxx --at "2024-01-15T10:00:00" --timezone "America/New_York"',
+    '<%= config.bin %> campaigns schedule cmp_xxx --at "tomorrow at 9am"',
+    '<%= config.bin %> campaigns schedule cmp_xxx --at "next Monday 10am" --timezone "America/New_York"',
+    '<%= config.bin %> campaigns schedule cmp_xxx --at "2026-04-01T10:00:00Z"',
   ];
 
   static args = {
@@ -37,7 +41,7 @@ export default class CampaignsSchedule extends AuthenticatedCommand {
   static flags = {
     ...AuthenticatedCommand.baseFlags,
     at: Flags.string({
-      description: "When to send (ISO 8601 datetime)",
+      description: 'When to send — ISO 8601 or natural language ("tomorrow at 9am", "in 2 hours")',
       required: true,
     }),
     timezone: Flags.string({
@@ -49,21 +53,27 @@ export default class CampaignsSchedule extends AuthenticatedCommand {
   async run(): Promise<void> {
     const { args, flags } = await this.parse(CampaignsSchedule);
 
-    const scheduledAt = new Date(flags.at);
+    let scheduledAt = new Date(flags.at);
     if (isNaN(scheduledAt.getTime())) {
-      this.error(
-        "Invalid date format. Use ISO 8601 format (e.g., 2024-01-15T10:00:00Z)",
-      );
+      const parsed = chrono.parseDate(flags.at, new Date(), { forwardDate: true });
+      if (!parsed) {
+        this.error('Could not understand the date. Try: "tomorrow at 9am", "in 2 hours", or ISO 8601: 2026-04-01T10:00:00Z');
+      }
+      scheduledAt = parsed;
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (!isJsonMode()) {
+        info(`Interpreted "${flags.at}" as ${scheduledAt.toLocaleString()} (${tz})`);
+      }
     }
 
     if (scheduledAt <= new Date()) {
-      this.error("Scheduled time must be in the future");
+      this.error('That time is in the past. Try: "tomorrow at 9am" or "in 2 hours"');
     }
 
     const campaign = await apiClient.post<Campaign>(
       `/api/v1/campaigns/${args.id}/schedule`,
       {
-        scheduledAt: flags.at,
+        scheduledAt: scheduledAt.toISOString(),
         timezone: flags.timezone,
       },
     );

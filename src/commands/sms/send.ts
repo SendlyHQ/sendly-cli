@@ -11,6 +11,7 @@ import {
   json,
   isJsonMode,
 } from "../../lib/output.js";
+import inquirer from "inquirer";
 
 interface SendMessageResponse {
   id: string;
@@ -42,7 +43,6 @@ export default class SmsSend extends AuthenticatedCommand {
     to: Flags.string({
       char: "t",
       description: "Recipient phone number (E.164 format)",
-      required: true,
     }),
     text: Flags.string({
       char: "m",
@@ -68,19 +68,62 @@ export default class SmsSend extends AuthenticatedCommand {
     const mediaUrls = flags["media-url"];
     const hasMedia = mediaUrls && mediaUrls.length > 0;
 
-    if (!/^\+[1-9]\d{1,14}$/.test(flags.to)) {
+    let to = flags.to;
+    let text = flags.text;
+
+    if (!to) {
+      if (process.stdin.isTTY) {
+        const answers = await inquirer.prompt([
+          {
+            type: "input",
+            name: "to",
+            message: "Recipient phone number (E.164):",
+            validate: (input: string) => {
+              if (!input) return "Phone number is required";
+              if (!/^\+[1-9]\d{1,14}$/.test(input)) {
+                return "Invalid format. Use E.164: +15551234567";
+              }
+              return true;
+            },
+          },
+        ]);
+        to = answers.to;
+      } else {
+        error("Missing required flag: --to", {
+          hint: "Use --to +15551234567",
+        });
+        this.exit(1);
+      }
+    }
+
+    if (!text && !hasMedia) {
+      if (process.stdin.isTTY) {
+        const answers = await inquirer.prompt([
+          {
+            type: "input",
+            name: "text",
+            message: "Message text:",
+            validate: (input: string) => {
+              if (!input.trim()) return "Message text cannot be empty";
+              return true;
+            },
+          },
+        ]);
+        text = answers.text;
+      } else {
+        error("Either --text or --media-url is required");
+        this.exit(1);
+      }
+    }
+
+    if (!/^\+[1-9]\d{1,14}$/.test(to!)) {
       error("Invalid phone number format", {
         hint: "Use E.164 format: +15551234567",
       });
       this.exit(1);
     }
 
-    if (!flags.text && !hasMedia) {
-      error("Either --text or --media-url is required");
-      this.exit(1);
-    }
-
-    if (flags.text && !flags.text.trim()) {
+    if (text && !text.trim()) {
       error("Message text cannot be empty");
       this.exit(1);
     }
@@ -93,9 +136,9 @@ export default class SmsSend extends AuthenticatedCommand {
       const response = await apiClient.post<SendMessageResponse>(
         "/api/v1/messages",
         {
-          to: flags.to,
+          to,
           messageType: flags.type,
-          ...(flags.text && { text: flags.text }),
+          ...(text && { text }),
           ...(flags.from && { from: flags.from }),
           ...(hasMedia && { mediaUrls }),
         },
