@@ -55,7 +55,7 @@ export default class ConversationsUpdate extends AuthenticatedCommand {
       if (flags.metadata) body.metadata = JSON.parse(flags.metadata);
       if (flags.tags) body.tags = flags.tags.split(",").map((t) => t.trim());
 
-      const response = await apiClient.put<UpdateConversationResponse>(
+      const response = await apiClient.patch<UpdateConversationResponse>(
         `/api/v1/conversations/${encodeURIComponent(args.id)}`,
         body,
       );

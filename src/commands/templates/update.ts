@@ -63,7 +63,7 @@ export default class TemplatesUpdate extends AuthenticatedCommand {
     }
 
     try {
-      const response = await apiClient.put<TemplateResponse>(
+      const response = await apiClient.patch<TemplateResponse>(
         `/api/v1/templates/${encodeURIComponent(args.id)}`,
         body,
       );

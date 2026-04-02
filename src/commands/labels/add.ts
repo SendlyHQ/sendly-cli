@@ -45,7 +45,7 @@ export default class LabelsAdd extends AuthenticatedCommand {
     try {
       const response = await apiClient.post<AddLabelResponse>(
         `/api/v1/conversations/${encodeURIComponent(args.conversationId)}/labels`,
-        { label_id: args.labelId },
+        { labelIds: [args.labelId] },
       );
 
       spin.stop();
