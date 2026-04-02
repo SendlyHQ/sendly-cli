@@ -51,7 +51,7 @@ export default class DraftsList extends AuthenticatedCommand {
     const response = await apiClient.get<ListDraftsResponse>(
       "/api/v1/drafts",
       {
-        ...(flags["conversation-id"] && { conversationId: flags["conversation-id"] }),
+        ...(flags["conversation-id"] && { conversation_id: flags["conversation-id"] }),
         ...(flags.status && { status: flags.status }),
       },
     );
