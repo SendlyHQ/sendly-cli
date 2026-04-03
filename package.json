@@ -114,9 +114,16 @@
   "keywords": [
     "sendly",
     "sms",
+    "sms-api",
     "cli",
     "messaging",
-    "api"
+    "text-message",
+    "otp",
+    "phone-verification",
+    "bulk-sms",
+    "twilio-alternative",
+    "developer-tools",
+    "webhooks"
   ],
   "repository": {
     "type": "git",
