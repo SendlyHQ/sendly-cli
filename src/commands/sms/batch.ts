@@ -56,11 +56,13 @@ interface BatchResponse {
   creditsRefunded: number;
   status: string;
   messages?: Array<{
-    index: number;
+    index?: number;
     id: string;
     to: string;
     status: string;
-    error?: string;
+    error?: string | null;
+    createdAt?: string;
+    deliveredAt?: string | null;
   }>;
 }
 

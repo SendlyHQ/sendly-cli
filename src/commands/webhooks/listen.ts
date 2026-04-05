@@ -237,11 +237,15 @@ export default class WebhooksListen extends AuthenticatedCommand {
     if (data) {
       const messageId = data.id as string;
       const to = data.to as string;
+      const batchId = (data as any).batch_id as string | undefined;
       if (messageId) {
         console.log(`  ${colors.dim("id:")} ${messageId}`);
       }
       if (to) {
         console.log(`  ${colors.dim("to:")} ${to}`);
+      }
+      if (batchId) {
+        console.log(`  ${colors.dim("batch:")} ${batchId}`);
       }
     }
   }
