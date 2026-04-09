@@ -14,6 +14,9 @@ interface StatusResponse {
   verified_at: string | null;
   created_at: string;
   sandbox: boolean;
+  app_name?: string;
+  template_id?: string;
+  profile_id?: string;
 }
 
 export default class VerifyStatus extends AuthenticatedCommand {

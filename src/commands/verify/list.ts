@@ -14,15 +14,14 @@ interface Verification {
   verified_at: string | null;
   created_at: string;
   sandbox: boolean;
+  app_name?: string;
+  template_id?: string;
+  profile_id?: string;
 }
 
 interface Pagination {
-  total: number;
   limit: number;
-  offset: number;
-  page: number;
-  totalPages: number;
-  hasMore: boolean;
+  has_more: boolean;
 }
 
 interface ListResponse {
@@ -35,8 +34,7 @@ export default class VerifyList extends AuthenticatedCommand {
 
   static examples = [
     "<%= config.bin %> verify list",
-    "<%= config.bin %> verify list --limit 10",
-    "<%= config.bin %> verify list --page 2",
+    "<%= config.bin %> verify list --limit 50",
     "<%= config.bin %> verify list --status verified",
     "<%= config.bin %> verify list --json",
   ];
@@ -45,15 +43,8 @@ export default class VerifyList extends AuthenticatedCommand {
     ...AuthenticatedCommand.baseFlags,
     limit: Flags.integer({
       char: "l",
-      description: "Number of verifications per page",
+      description: "Number of verifications to fetch (max 100)",
       default: 20,
-    }),
-    page: Flags.integer({
-      char: "p",
-      description: "Page number (starts at 1)",
-    }),
-    offset: Flags.integer({
-      description: "Offset from start (alternative to --page)",
     }),
     status: Flags.string({
       char: "s",
@@ -73,8 +64,6 @@ export default class VerifyList extends AuthenticatedCommand {
     try {
       const response = await apiClient.get<ListResponse>("/api/v1/verify", {
         limit: flags.limit,
-        ...(flags.page && { page: flags.page }),
-        ...(flags.offset && { offset: flags.offset }),
         ...(flags.status && { status: flags.status }),
       });
 
@@ -96,16 +85,14 @@ export default class VerifyList extends AuthenticatedCommand {
       }
 
       const pagination = response.pagination || {
-        total: response.verifications.length,
-        page: 1,
-        totalPages: 1,
-        hasMore: false,
+        limit: response.verifications.length,
+        has_more: false,
       };
 
       console.log();
       console.log(
         colors.dim(
-          `Showing ${response.verifications.length} verifications (page ${pagination.page} of ${pagination.totalPages}, ${pagination.total} total)`,
+          `Showing ${response.verifications.length} verifications${pagination.has_more ? " (more available)" : ""}`,
         ),
       );
       console.log();
@@ -137,11 +124,11 @@ export default class VerifyList extends AuthenticatedCommand {
         { header: "Created", key: "created_at", width: 20, formatter: (v) => new Date(String(v)).toLocaleString() },
       ]);
 
-      if (pagination.hasMore) {
+      if (pagination.has_more) {
         console.log();
         console.log(
           colors.dim(
-            `  Use ${colors.code(`--page ${pagination.page + 1}`)} to see more`,
+            `  Use ${colors.code(`--limit ${pagination.limit + 20}`)} to see more`,
           ),
         );
       }
