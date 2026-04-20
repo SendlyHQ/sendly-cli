@@ -1,5 +1,19 @@
 # @sendly/cli
 
+## 3.29.0
+
+### Minor Changes
+
+- New command `sendly contacts bulk-mark-valid --ids <csv> | --list <id>`: clear the invalid flag on many contacts at once (up to 10,000 per call).
+- `sendly webhooks listen` default event set now includes the full `message.*` + `contact.*` + `contacts.*` families so local debugging doesn't silently drop list-health events. Override with `--events` as before.
+
+## 3.28.0
+
+### Minor Changes
+
+- New command `sendly contacts mark-valid <id>`: clear the auto-exclusion flag on a contact.
+- New command `sendly contacts check-numbers [--list <id>] [--force]`: trigger a background carrier lookup across your contacts.
+
 ## 3.25.0
 
 ### Minor Changes
@@ -142,7 +156,7 @@
 
   **SDK Code Examples**
   - Added all 9 SDK variants (Node.js, Python, cURL, Go, PHP, Ruby, Java, C#, Rust) to API Reference Overview section
-  - Fixed PHP SDK naming consistency: `Sendly\\SendlyClient` → `Sendly\\Sendly` across 25 code examples
+  - Fixed PHP SDK naming consistency: `Sendly\SendlyClient` → `Sendly\Sendly` across 25 code examples
   - Fixed Java SDK naming: `com.sendly.SendlyClient` → `com.sendly.Sendly` in 3 API key examples
   - Fixed Rust SDK naming: `sendly::SendlyClient` → `sendly::Sendly` in 1 example
 

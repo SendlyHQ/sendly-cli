@@ -61,8 +61,10 @@ export default class WebhooksListen extends AuthenticatedCommand {
     }),
     events: Flags.string({
       char: "e",
-      description: "Comma-separated list of events to listen for",
-      default: "message.sent,message.delivered,message.failed,message.bounced,message.retrying",
+      description:
+        "Comma-separated list of events to listen for. Default subscribes to all message.* and contact.* / contacts.* events so nothing is missed during local dev.",
+      default:
+        "message.sent,message.delivered,message.failed,message.bounced,message.retrying,message.received,message.opt_out,message.opt_in,contact.auto_flagged,contact.marked_valid,contacts.lookup_completed,contacts.bulk_marked_valid",
     }),
   };
 
