@@ -1,5 +1,12 @@
 # @sendly/cli
 
+## 3.32.0
+
+### Minor Changes
+
+- `sendly login` gains a press-to-copy UX during the device-code flow. While waiting for authorization, press `[c]` to copy the verification URL to the clipboard or `[q]` / Ctrl-C to cancel cleanly. Cross-platform (pbcopy / clip / wl-copy / xclip / xsel). No-ops silently in CI / non-TTY environments.
+- `sendly --help` now shows real topic descriptions for `contacts`, `conversations`, `campaigns`, `templates`, `labels`, `drafts`, and `verify` instead of falling back to the first alphabetical subcommand's description.
+
 ## 3.31.0
 
 ### Minor Changes

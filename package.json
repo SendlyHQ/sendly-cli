@@ -1,6 +1,6 @@
 {
   "name": "@sendly/cli",
-  "version": "3.31.0",
+  "version": "3.32.0",
   "private": false,
   "type": "module",
   "description": "Sendly CLI - Send SMS from your terminal",
@@ -46,6 +46,27 @@
     "topics": {
       "sms": {
         "description": "Send and manage SMS messages"
+      },
+      "contacts": {
+        "description": "Manage contacts, import CSVs, run carrier lookups, and mark invalid contacts valid"
+      },
+      "conversations": {
+        "description": "View and reply to inbound conversations, manage context, close/reopen"
+      },
+      "campaigns": {
+        "description": "Create, schedule, preview, and send bulk SMS campaigns"
+      },
+      "templates": {
+        "description": "Create and manage message templates; includes AI-powered enhancement"
+      },
+      "labels": {
+        "description": "Organize conversations and contacts with labels"
+      },
+      "drafts": {
+        "description": "Human-in-the-loop drafts — create, approve, or reject pending sends"
+      },
+      "verify": {
+        "description": "Send and validate OTP codes for verification flows"
       },
       "keys": {
         "description": "Manage API keys"
