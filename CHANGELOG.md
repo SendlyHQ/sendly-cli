@@ -1,5 +1,13 @@
 # @sendly/cli
 
+## 3.31.0
+
+### Minor Changes
+
+- New command `sendly countries` — list supported countries with pricing, tier, and whether registration is required. Public endpoint (no auth). Filter by `--search` or `--tier`.
+- New command `sendly templates enhance` — AI-rewrite a message for clarity and compliance. Accepts text via `--text`, `--file`, a positional arg, or stdin. Requires the `ai_classification` flag on your account.
+- New command `sendly sms upload-media <file>` — upload a JPEG / PNG / GIF for MMS and get back a public URL to pass to `sms send --media`. Requires MMS to be enabled for your account.
+
 ## 3.30.0
 
 ### Minor Changes
