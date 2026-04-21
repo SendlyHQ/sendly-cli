@@ -1,5 +1,12 @@
 # @sendly/cli
 
+## 3.30.0
+
+### Minor Changes
+
+- New command `sendly upgrade` — bumps the CLI to the latest version. Auto-detects whether you installed via Homebrew or npm and runs the matching command (`brew upgrade sendly` or `npm install -g @sendly/cli@latest`). Use `--check` to dry-run.
+- Out-of-date banner — the CLI now checks npm for a newer version once every 24h (cached) and prints a one-line banner after command output when you're behind. Quiet in CI (`CI=true`), offline-safe, non-blocking.
+
 ## 3.29.0
 
 ### Minor Changes

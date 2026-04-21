@@ -14,8 +14,18 @@ Official command-line interface for the [Sendly](https://sendly.live) SMS API.
 ## Installation
 
 ```bash
+# npm
 npm install -g @sendly/cli
+
+# or Homebrew (macOS / Linux)
+brew install SendlyHQ/tap/sendly
 ```
+
+## Staying up to date
+
+The CLI checks npm once a day and prints a one-line banner after your command if a newer version is out. Run `sendly upgrade` to update — it auto-detects your install path (Homebrew vs npm) and runs the right command. Use `sendly upgrade --check` to see what it would do without executing.
+
+Banner is silent in CI (`CI=true`) and offline-safe.
 
 ## Quick Start
 
