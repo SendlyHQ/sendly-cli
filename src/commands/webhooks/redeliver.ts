@@ -5,6 +5,7 @@ import { success, error, spinner, json, isJsonMode } from "../../lib/output.js";
 
 interface RedeliverResponse {
   message: string;
+  run_id?: string;
   requeued: number;
   skipped: number;
   truncated: boolean;
@@ -85,6 +86,7 @@ export default class WebhooksRedeliver extends AuthenticatedCommand {
       }
 
       success(result.message || "Redeliver complete", {
+        ...(result.run_id ? { "Run ID": result.run_id } : {}),
         Requeued: String(result.requeued),
         Skipped: String(result.skipped),
         Truncated: result.truncated ? "yes (window larger than limit)" : "no",

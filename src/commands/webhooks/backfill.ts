@@ -5,6 +5,7 @@ import { success, error, spinner, json, isJsonMode } from "../../lib/output.js";
 
 interface BackfillResponse {
   message: string;
+  run_id?: string;
   synthesized: number;
   by_type: Record<string, number>;
   truncated: boolean;
@@ -81,6 +82,7 @@ export default class WebhooksBackfill extends AuthenticatedCommand {
         .join(", ");
 
       success(result.message || "Backfill complete", {
+        ...(result.run_id ? { "Run ID": result.run_id } : {}),
         Synthesized: String(result.synthesized),
         "By Type": byType || "(none)",
         "Candidates Scanned": String(result.candidates_scanned),

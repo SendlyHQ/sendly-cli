@@ -1,5 +1,11 @@
 # @sendly/cli
 
+## 3.35.0
+
+### Patch Changes
+
+- `sendly webhooks redeliver` and `sendly webhooks backfill` now print the **Run ID** (e.g. `recover_…`) returned by the server so you can quote it in a support ticket or correlate with dashboard live progress. The dashboard's recovery dialog uses the same Run ID to subscribe to realtime progress events while the run is in flight.
+
 ## 3.34.0
 
 ### Patch Changes
