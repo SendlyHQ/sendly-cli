@@ -279,6 +279,33 @@ sendly webhooks rotate-secret whk_abc123
 
 Note: Old secret remains valid for 24 hours during migration.
 
+#### Recover Missed Events
+
+After an outage, three commands recover what was missed:
+
+```bash
+# Reset an open circuit breaker (do this first if your webhook circuit is open)
+sendly webhooks reset-circuit whk_abc123
+
+# Redeliver: re-queue failed deliveries already in the audit log
+sendly webhooks redeliver whk_abc123 \
+  --since 2026-05-01T00:00:00Z \
+  --until 2026-05-01T18:00:00Z \
+  --event-types message.delivered,message.failed \
+  --limit 5000
+
+# Backfill: synthesize deliveries for messages whose events never created
+# a delivery row in the first place (silent-drop case)
+sendly webhooks backfill whk_abc123 \
+  --since 2026-05-01T00:00:00Z \
+  --event-types message.delivered,message.failed
+```
+
+Use `redeliver` when deliveries exist but failed (5xx, timeout). Use
+`backfill` when deliveries are missing entirely (circuit was open during
+the outage). Both are idempotent — duplicate calls within the same
+window won't double-send.
+
 ### Verification (OTP) Commands
 
 #### Send OTP
