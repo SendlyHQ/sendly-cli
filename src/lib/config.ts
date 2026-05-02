@@ -194,7 +194,37 @@ function initializeConfig(): Conf<SendlyConfig> {
     // Old key also didn't work - corrupted or fresh install
   }
 
-  // Fresh install or corrupted - start with new key
+  // Fresh install or corrupted. If a config file exists at this point,
+  // both the new key and the old key failed to decrypt it — that means
+  // the file was written by a different machine, encrypted with a
+  // SENDLY_CONFIG_KEY that no longer matches, or got corrupted.
+  // Constructing a new Conf{} here would just re-read the same file and
+  // throw the same SyntaxError. Move it aside so the user keeps a copy
+  // (in case they recover the key later) and start clean.
+  const filePath = path.join(CONFIG_DIR, CONFIG_FILE);
+  if (fs.existsSync(filePath)) {
+    try {
+      const backupPath = `${filePath}.corrupt.${Date.now()}`;
+      fs.renameSync(filePath, backupPath);
+      // Stay quiet by default — most callers run early in the process
+      // before output helpers are wired. A debug breadcrumb is enough.
+      if (process.env.DEBUG) {
+        process.stderr.write(
+          `[sendly] Could not decrypt ${filePath}; moved to ${backupPath} and starting fresh. Run 'sendly login' to re-authenticate.\n`,
+        );
+      }
+    } catch {
+      // If we can't move the file (permissions, FS issue), our best
+      // remaining option is to delete it — losing it is strictly better
+      // than crashing every command.
+      try {
+        fs.unlinkSync(filePath);
+      } catch {
+        // Give up silently and let Conf throw if it must.
+      }
+    }
+  }
+
   return new Conf<SendlyConfig>({
     projectName: "sendly",
     cwd: CONFIG_DIR,
