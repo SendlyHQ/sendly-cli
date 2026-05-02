@@ -1,5 +1,21 @@
 # @sendly/cli
 
+## 3.34.0
+
+### Patch Changes
+
+- `sendly upgrade` now correctly detects how the CLI was installed when both Homebrew and an npm-global install coexist on the same machine. Previously the detection trusted the `HOMEBREW_CELLAR` env var, which is set in every shell where Homebrew is on PATH — even when the CLI itself was installed via `npm install -g @sendly/cli`. The result: an npm-installed CLI on a Mac with brew available would shell out to `brew upgrade sendly` and either error or upgrade the wrong copy. Detection now resolves `process.argv[1]` through `fs.realpathSync` and inspects the actual install path (`node_modules/` for npm, `Cellar/` or `/opt/homebrew/` for Homebrew). Returns `unknown` when the path is inconclusive instead of guessing — `sendly upgrade` then prints both options.
+- Recover gracefully from an un-decryptable `~/.sendly/config.json`. When both the active and legacy encryption keys fail to decrypt the config (cross-machine sync, key rotation, file corruption), the CLI used to crash every command with `SyntaxError: Unexpected token '�'…` because the "fresh install" fallback re-instantiated `Conf{}` against the same broken file. The CLI now moves the un-decryptable file aside to `config.json.corrupt.<timestamp>` (so the user keeps a copy in case they recover the key) and starts clean. Run `sendly login` afterwards to re-authenticate.
+- 12 new unit tests covering the detection logic across nvm, Homebrew (Apple Silicon + Intel + linuxbrew), npm-global, source checkouts, and `realpath` failures.
+
+## 3.33.0
+
+### Minor Changes
+
+- New `sendly webhooks redeliver <id>` — re-queue failed or cancelled webhook deliveries from a time window. Idempotent — already-delivered events are skipped, not double-sent. Use after fixing your endpoint.
+- New `sendly webhooks backfill <id>` — synthesize webhook deliveries for messages whose events never created a delivery row in the first place (the silent-drop case our circuit-breaker was leaving behind). Run after `redeliver` to recover events from a window when the circuit was open.
+- New `sendly webhooks reset-circuit <id>` — force-close an open or half-open circuit breaker. Recovery commands reject with HTTP 409 while the circuit is open, so call this first if your circuit is stuck open after fixing your endpoint.
+
 ## 3.32.0
 
 ### Minor Changes
