@@ -1,5 +1,21 @@
 # @sendly/cli
 
+## 3.36.0
+
+### Minor Changes
+
+- New command `sendly enterprise verification submit <workspaceId>` — submit (or resubmit) a verification for an enterprise workspace. Matches the actual API shape: camelCase top-level fields, nested `address`/`contact` objects, `--entity-type` + `--brn`/`--brn-type`/`--brn-country` instead of the old `businessType`/`ein`. Pass `--data <file.json>` for the full payload, or use individual `--business-name`, `--website`, `--contact-email`, etc. flags. Field flags are merged on top of the JSON file when both are passed.
+- **Partial-update friendly:** for resubmits on existing workspaces, send only the fields you want to change — everything else is filled in from the existing record. Hosted page URLs (`/biz/`, `/opt-in/`, `/legal/`) generated during provision are auto-preserved.
+- New command `sendly enterprise verification resubmit <workspaceId>` — convenience alias for resubmits. Same endpoint as `submit`, just reads more naturally for one-field-change retries after a rejection.
+- New command `sendly enterprise verification get <workspaceId>` — fetch and pretty-print the current verification record (status, business info, address, contact, rejection reason). Useful before a resubmit so you know what's already on file. `--json` for raw output.
+- For sole proprietors, leave `--brn`/`--brn-type`/`--brn-country` unset — the server strips them before forwarding to the carrier.
+
+### Server-side fixes paired with this release
+
+- `/api/v1/enterprise/workspaces/:id/verification/submit` now returns specific missing-field errors (e.g. `"Missing required fields: website"`) instead of listing every required field whether present or not.
+- Endpoint accepts both flat and `{ verification: {...} }` wrapped shapes (matches `/enterprise/provision`).
+- `useCase` validation expanded from 23 entries to the full 43-value Telnyx enum.
+
 ## 3.35.0
 
 ### Patch Changes
