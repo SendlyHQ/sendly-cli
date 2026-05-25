@@ -1,6 +1,6 @@
 {
   "name": "@sendly/cli",
-  "version": "3.35.0",
+  "version": "3.36.0",
   "private": false,
   "type": "module",
   "description": "Sendly CLI - Send SMS from your terminal",
@@ -46,6 +46,9 @@
     "topics": {
       "sms": {
         "description": "Send and manage SMS messages"
+      },
+      "business-upgrade": {
+        "description": "Upgrade a workspace's business entity (e.g. sole-prop → LLC); reserves a new toll-free number under the new entity and submits to the carrier for review"
       },
       "contacts": {
         "description": "Manage contacts, import CSVs, run carrier lookups, and mark invalid contacts valid"
