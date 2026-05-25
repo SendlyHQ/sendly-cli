@@ -1,9 +1,36 @@
 import { Flags } from "@oclif/core";
-import { readFileSync } from "node:fs";
-import { basename } from "node:path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
-import { apiClient } from "../../lib/api-client.js";
+import {
+  getAuthToken,
+  getConfigValue,
+  getEffectiveValue,
+} from "../../lib/config.js";
+import { ApiError, AuthenticationError } from "../../lib/api-client.js";
 import { json, success, info, isJsonMode } from "../../lib/output.js";
+
+const TEXT_FIELDS: Record<string, string> = {
+  "business-name": "businessName",
+  brn: "brn",
+  "brn-type": "brnType",
+  "brn-country": "brnCountry",
+  "entity-type": "entityType",
+  "monthly-volume": "monthlyVolume",
+  "use-case": "useCase",
+  "use-case-summary": "useCaseSummary",
+  "sample-messages": "sampleMessages",
+  "opt-in-workflow": "optInWorkflow",
+  "privacy-url": "privacyUrl",
+  "terms-url": "termsUrl",
+};
+
+interface ResubmitUpgradeResponse {
+  success: boolean;
+  pendingVerificationId: string;
+  message: string;
+  error?: string;
+}
 
 export default class BusinessUpgradeResubmit extends AuthenticatedCommand {
   static description =
@@ -23,49 +50,94 @@ export default class BusinessUpgradeResubmit extends AuthenticatedCommand {
     "entity-type": Flags.string(),
     "monthly-volume": Flags.string(),
     "use-case": Flags.string(),
+    "use-case-summary": Flags.string(),
     "sample-messages": Flags.string(),
     "opt-in-workflow": Flags.string(),
+    "privacy-url": Flags.string(),
+    "terms-url": Flags.string(),
     "ein-doc": Flags.string(),
   };
 
   async run(): Promise<void> {
     const { flags } = await this.parse(BusinessUpgradeResubmit);
 
-    const form = new FormData();
-    const fieldMap: Record<string, string | undefined> = {
-      businessName: flags["business-name"],
-      brn: flags.brn,
-      brnType: flags["brn-type"],
-      brnCountry: flags["brn-country"],
-      entityType: flags["entity-type"],
-      monthlyVolume: flags["monthly-volume"],
-      useCase: flags["use-case"],
-      sampleMessages: flags["sample-messages"],
-      optInWorkflow: flags["opt-in-workflow"],
+    const boundary = `----FormBoundary${Date.now()}${Math.random()
+      .toString(36)
+      .substring(2)}`;
+    const parts: Buffer[] = [];
+    const appendField = (name: string, value: string) => {
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
+            value +
+            "\r\n",
+        ),
+      );
     };
-    for (const [k, v] of Object.entries(fieldMap)) {
-      if (v !== undefined) form.append(k, v);
-    }
-    if (flags["ein-doc"]) {
-      const buf = readFileSync(flags["ein-doc"]);
-      const blob = new Blob([buf], { type: "application/pdf" });
-      form.append("einDoc", blob, basename(flags["ein-doc"]));
+
+    for (const [flagKey, wireKey] of Object.entries(TEXT_FIELDS)) {
+      const v = flags[flagKey as keyof typeof flags];
+      if (typeof v === "string" && v.length > 0) appendField(wireKey, v);
     }
 
-    const result = await apiClient.postMultipart<{
-      success: boolean;
-      pendingVerificationId: string;
-      message: string;
-    }>(
-      `/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade/resubmit`,
-      form,
-    );
+    if (flags["ein-doc"]) {
+      const filePath = flags["ein-doc"];
+      if (!fs.existsSync(filePath)) {
+        this.error(`File not found: ${filePath}`);
+      }
+      const filename = path.basename(filePath);
+      const fileBuffer = fs.readFileSync(filePath);
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="einDoc"; filename="${filename}"\r\n` +
+            `Content-Type: application/pdf\r\n\r\n`,
+        ),
+      );
+      parts.push(fileBuffer);
+      parts.push(Buffer.from("\r\n"));
+    }
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+    const token = getAuthToken();
+    if (!token) throw new AuthenticationError();
+
+    const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
+    const timeout = getEffectiveValue("timeout");
+    const url = `${baseUrl}/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade/resubmit`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = (await resp
+      .json()
+      .catch(() => ({}))) as ResubmitUpgradeResponse;
+    if (!resp.ok) {
+      throw new ApiError(
+        data.error || "resubmit_error",
+        data.message || `HTTP ${resp.status}`,
+        resp.status,
+      );
+    }
 
     if (isJsonMode()) {
-      json(result);
+      json(data);
       return;
     }
     success("Resubmitted to carrier.");
-    info(result.message);
+    info(data.message);
   }
 }

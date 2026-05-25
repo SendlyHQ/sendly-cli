@@ -85,27 +85,27 @@ export default class BusinessUpgradePreflight extends AuthenticatedCommand {
 
     const verdictColor =
       report.verdict === "blocked"
-        ? colors.red
+        ? colors.error
         : report.verdict === "warnings"
-          ? colors.yellow
-          : colors.green;
+          ? colors.warning
+          : colors.success;
     info(`Verdict: ${verdictColor(report.verdict)} (${report.country})`);
     if (report.issues.length === 0) {
-      info(colors.green("No issues. Ready to submit."));
+      info(colors.success("No issues. Ready to submit."));
       return;
     }
     info("");
     for (const issue of report.issues) {
       const sevColor =
         issue.severity === "blocker"
-          ? colors.red
+          ? colors.error
           : issue.severity === "warning"
-            ? colors.yellow
-            : colors.gray;
+            ? colors.warning
+            : colors.dim;
       info(
         `${sevColor(issue.severity.toUpperCase())} ${issue.field} — ${issue.message}`,
       );
-      if (issue.suggestion) info(`  ${colors.gray("→ " + issue.suggestion)}`);
+      if (issue.suggestion) info(`  ${colors.dim("→ " + issue.suggestion)}`);
     }
   }
 }

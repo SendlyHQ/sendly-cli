@@ -45,8 +45,8 @@ export default class BusinessUpgradeStatus extends AuthenticatedCommand {
     info(`${colors.bold(data.pending.businessName)}  ·  status: ${data.pending.status}`);
     if (data.pending.tollFreeNumber) info(`Reserved number: ${data.pending.tollFreeNumber}`);
     if (data.pending.rejectionReason) {
-      info(colors.yellow(`Carrier feedback: ${data.pending.rejectionReason}`));
+      info(colors.warning(`Carrier feedback: ${data.pending.rejectionReason}`));
     }
-    info(colors.gray(`Submitted ${data.pending.createdAt}`));
+    info(colors.dim(`Submitted ${data.pending.createdAt}`));
   }
 }

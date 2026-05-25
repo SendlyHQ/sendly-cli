@@ -1,9 +1,51 @@
 import { Flags } from "@oclif/core";
-import { readFileSync } from "node:fs";
-import { basename } from "node:path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
-import { apiClient } from "../../lib/api-client.js";
+import {
+  getAuthToken,
+  getConfigValue,
+  getEffectiveValue,
+} from "../../lib/config.js";
+import { ApiError, AuthenticationError } from "../../lib/api-client.js";
 import { json, info, success, isJsonMode } from "../../lib/output.js";
+
+interface StartUpgradeResponse {
+  success: boolean;
+  pendingVerificationId: string;
+  telnyxVerificationId: string;
+  tollFreeNumber: string;
+  message: string;
+  error?: string;
+}
+
+const TEXT_FIELDS: Record<string, string> = {
+  "business-name": "businessName",
+  brn: "brn",
+  "brn-type": "brnType",
+  "brn-country": "brnCountry",
+  "entity-type": "entityType",
+  "doing-business-as": "doingBusinessAs",
+  website: "website",
+  address1: "address1",
+  address2: "address2",
+  city: "city",
+  state: "state",
+  zip: "zip",
+  "address-country": "addressCountry",
+  "contact-first-name": "contactFirstName",
+  "contact-last-name": "contactLastName",
+  "contact-email": "contactEmail",
+  "contact-phone": "contactPhone",
+  "monthly-volume": "monthlyVolume",
+  "use-case": "useCase",
+  "use-case-summary": "useCaseSummary",
+  "sample-messages": "sampleMessages",
+  "opt-in-workflow": "optInWorkflow",
+  "privacy-url": "privacyUrl",
+  "terms-url": "termsUrl",
+  "additional-information": "additionalInformation",
+};
 
 export default class BusinessUpgradeStart extends AuthenticatedCommand {
   static description =
@@ -26,8 +68,25 @@ export default class BusinessUpgradeStart extends AuthenticatedCommand {
     "entity-type": Flags.string({ required: true, default: "PRIVATE_PROFIT" }),
     "doing-business-as": Flags.string(),
     website: Flags.string(),
+    address1: Flags.string(),
+    address2: Flags.string(),
+    city: Flags.string(),
+    state: Flags.string(),
+    zip: Flags.string(),
+    "address-country": Flags.string(),
+    "contact-first-name": Flags.string(),
+    "contact-last-name": Flags.string(),
+    "contact-email": Flags.string(),
+    "contact-phone": Flags.string(),
     "monthly-volume": Flags.string(),
     "use-case": Flags.string(),
+    "use-case-summary": Flags.string(),
+    "sample-messages": Flags.string(),
+    "opt-in-workflow": Flags.string(),
+    "privacy-url": Flags.string(),
+    "terms-url": Flags.string(),
+    "additional-information": Flags.string(),
+    "age-gated-content": Flags.boolean({ default: false }),
     "ein-doc": Flags.string({
       description: "Path to the IRS letter (CP-575 or 147C) PDF",
     }),
@@ -36,42 +95,85 @@ export default class BusinessUpgradeStart extends AuthenticatedCommand {
   async run(): Promise<void> {
     const { flags } = await this.parse(BusinessUpgradeStart);
 
-    const form = new FormData();
-    const fieldMap: Record<string, string | undefined> = {
-      businessName: flags["business-name"],
-      brn: flags.brn,
-      brnType: flags["brn-type"],
-      brnCountry: flags["brn-country"],
-      entityType: flags["entity-type"],
-      doingBusinessAs: flags["doing-business-as"],
-      website: flags.website,
-      monthlyVolume: flags["monthly-volume"],
-      useCase: flags["use-case"],
-    };
-    for (const [k, v] of Object.entries(fieldMap)) {
-      if (v !== undefined) form.append(k, v);
-    }
-    if (flags["ein-doc"]) {
-      const buf = readFileSync(flags["ein-doc"]);
-      const blob = new Blob([buf], { type: "application/pdf" });
-      form.append("einDoc", blob, basename(flags["ein-doc"]));
-    }
+    const boundary = `----FormBoundary${Date.now()}${Math.random()
+      .toString(36)
+      .substring(2)}`;
+    const parts: Buffer[] = [];
 
-    const result = await apiClient.postMultipart<{
-      success: boolean;
-      pendingVerificationId: string;
-      telnyxVerificationId: string;
-      tollFreeNumber: string;
-      message: string;
-    }>(`/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade`, form);
+    const appendField = (name: string, value: string) => {
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
+            value +
+            "\r\n",
+        ),
+      );
+    };
+
+    for (const [flagKey, wireKey] of Object.entries(TEXT_FIELDS)) {
+      const v = flags[flagKey as keyof typeof flags];
+      if (typeof v === "string" && v.length > 0) appendField(wireKey, v);
+    }
+    appendField("ageGatedContent", flags["age-gated-content"] ? "true" : "false");
+
+    if (flags["ein-doc"]) {
+      const filePath = flags["ein-doc"];
+      if (!fs.existsSync(filePath)) {
+        this.error(`File not found: ${filePath}`);
+      }
+      const filename = path.basename(filePath);
+      const fileBuffer = fs.readFileSync(filePath);
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="einDoc"; filename="${filename}"\r\n` +
+            `Content-Type: application/pdf\r\n\r\n`,
+        ),
+      );
+      parts.push(fileBuffer);
+      parts.push(Buffer.from("\r\n"));
+    }
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+    const token = getAuthToken();
+    if (!token) throw new AuthenticationError();
+
+    const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
+    const timeout = getEffectiveValue("timeout");
+    const url = `${baseUrl}/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = (await resp.json().catch(() => ({}))) as StartUpgradeResponse;
+    if (!resp.ok) {
+      throw new ApiError(
+        data.error || "upgrade_error",
+        data.message || `HTTP ${resp.status}`,
+        resp.status,
+      );
+    }
 
     if (isJsonMode()) {
-      json(result);
+      json(data);
       return;
     }
     success("Upgrade submitted to carrier.");
-    info(`Pending verification: ${result.pendingVerificationId}`);
-    info(`New toll-free number (reserved): ${result.tollFreeNumber}`);
-    info(result.message);
+    info(`Pending verification: ${data.pendingVerificationId}`);
+    info(`New toll-free number (reserved): ${data.tollFreeNumber}`);
+    info(data.message);
   }
 }
