@@ -71,6 +71,9 @@
       "verify": {
         "description": "Send and validate OTP codes for verification flows"
       },
+      "numbers": {
+        "description": "Browse, search, and buy phone numbers across supported countries"
+      },
       "keys": {
         "description": "Manage API keys"
       },
