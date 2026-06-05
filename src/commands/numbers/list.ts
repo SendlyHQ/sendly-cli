@@ -17,6 +17,9 @@ interface OwnedNumber {
   countryCode: string;
   phoneNumberType: string;
   monthlyCostCents: number;
+  requirementsSubmittedAt: string | null;
+  pendingCancellation: boolean;
+  scheduledReleaseAt: string | null;
 }
 
 interface ListNumbersResponse {
