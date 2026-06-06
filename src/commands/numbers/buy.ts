@@ -48,7 +48,11 @@ interface OwnedNumber {
 }
 
 interface BuyResponse {
-  status: "provisioning" | "documents_required" | "payment_required";
+  status:
+    | "provisioning"
+    | "documents_required"
+    | "under_review"
+    | "payment_required";
   number?: OwnedNumber;
   requirements?: unknown;
   action?: BuyAction;
@@ -159,6 +163,21 @@ export default class NumbersBuy extends AuthenticatedCommand {
         "/api/v1/numbers/buy",
         buyBody,
       );
+    }
+
+    // Document-required country: details submitted, number reserved + under
+    // review. No carrier order is placed until our team verifies + registers
+    // it, so there's nothing to poll for here.
+    if (response.status === "under_review") {
+      if (isJsonMode()) {
+        json(response);
+        return;
+      }
+      success("Number reserved — your details are under review", {
+        number: response.number?.phoneNumber,
+        note: "We verify your documents and register the number, usually within a few business days. It can't send until it's active — check `sendly numbers list`.",
+      });
+      return;
     }
 
     // status === "provisioning"
