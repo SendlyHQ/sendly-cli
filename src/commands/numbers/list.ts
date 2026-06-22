@@ -82,6 +82,23 @@ export default class NumbersList extends AuthenticatedCommand {
         key: "phoneNumberType",
         width: 12,
       },
+      {
+        header: "Source",
+        key: "source",
+        width: 12,
+        formatter: (v) => {
+          const s = String(v);
+          return s === "purchased"
+            ? "Bought"
+            : s === "ported_hosted_sms"
+              ? "Hosted SMS"
+              : s === "ported_full"
+                ? "Ported"
+                : s === "provisioned"
+                  ? "Provisioned"
+                  : s;
+        },
+      },
     ]);
   }
 }
