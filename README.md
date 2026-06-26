@@ -85,7 +85,10 @@ sendly logout
 ```bash
 sendly sms send --to "+15551234567" --text "Hello!"
 
-# With sender ID (international)
+# Send from a number you own (E.164) — see Numbers Commands below
+sendly sms send --to "+15551234567" --text "Hello!" --from "+447111111111"
+
+# Or an alphanumeric sender ID (international)
 sendly sms send --to "+447700900000" --text "Hello!" --from "MyBrand"
 ```
 
@@ -145,6 +148,41 @@ sendly sms scheduled
 
 ```bash
 sendly sms cancel sched_abc123
+```
+
+### Numbers Commands
+
+Buy international phone numbers and send from them. (US & Canada use toll-free
+verification instead — they can't be bought.)
+
+#### Search Available Numbers
+
+```bash
+sendly numbers search --country GB --type mobile
+```
+
+#### Buy a Number
+
+```bash
+sendly numbers buy --country GB --type mobile
+```
+
+The buy is asynchronous: the number starts as `provisioning` and becomes
+`active` once the carrier confirms it. Some countries need documents or
+business details first — you'll get a hosted link to complete them. See
+[How to buy a number](https://sendly.live/docs/how-to/buy-a-number).
+
+#### List Your Numbers
+
+```bash
+sendly numbers list
+```
+
+Pass the `phoneNumber` of any `active` number as `--from` on a send to send
+from it (see [Send from a number you own](https://sendly.live/docs/how-to/send-from-owned-number)):
+
+```bash
+sendly sms send --to "+15551234567" --text "Hi!" --from "+447111111111"
 ```
 
 ### API Key Commands
