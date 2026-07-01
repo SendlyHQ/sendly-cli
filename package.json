@@ -74,6 +74,18 @@
       "numbers": {
         "description": "Browse, search, and buy phone numbers across supported countries"
       },
+      "10dlc": {
+        "description": "10DLC A2P messaging registration — brands, campaigns, number assignment"
+      },
+      "10dlc brands": {
+        "description": "Register brands and track their carrier-review status"
+      },
+      "10dlc campaigns": {
+        "description": "Create messaging campaigns and track their carrier-review status"
+      },
+      "10dlc assignments": {
+        "description": "View number-to-campaign assignments"
+      },
       "keys": {
         "description": "Manage API keys"
       },

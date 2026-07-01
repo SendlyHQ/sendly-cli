@@ -185,6 +185,72 @@ from it (see [Send from a number you own](https://sendly.live/docs/how-to/send-f
 sendly sms send --to "+15551234567" --text "Hi!" --from "+447111111111"
 ```
 
+### 10DLC Commands
+
+Register your brand and messaging campaigns for carrier review so you can
+send from US local (10-digit) numbers. The flow is brand → qualify →
+campaign → assign number. Requires a live API key.
+
+#### Register a Brand
+
+```bash
+sendly 10dlc brands create --legal-name "Acme Inc" --ein "12-3456789" --website https://acme.com
+```
+
+#### Check Brand Status
+
+Carrier review starts as `pending` and becomes `verified` (or `failed`).
+Running `get` refreshes the status:
+
+```bash
+sendly 10dlc brands list
+sendly 10dlc brands get <brandId>
+```
+
+#### Qualify a Use Case
+
+Pre-check that a use case is accepted for your brand before creating a
+campaign:
+
+```bash
+sendly 10dlc qualify <brandId> MIXED
+```
+
+#### Create a Campaign
+
+Once the brand is `verified`:
+
+```bash
+sendly 10dlc campaigns create \
+  --brand <brandId> \
+  --use-case MIXED \
+  --description "Order updates and promotions" \
+  --message-flow "Customers opt in at checkout" \
+  --sample "Your order has shipped!" \
+  --sample "20% off this weekend"
+```
+
+Poll until the campaign is `active`:
+
+```bash
+sendly 10dlc campaigns get <campaignId>
+```
+
+#### Assign a Number
+
+Attach a US local number you own to the active campaign to make it sendable:
+
+```bash
+sendly 10dlc campaigns assign <campaignId> --number "+15551234567"
+sendly 10dlc assignments list
+```
+
+Then send from it:
+
+```bash
+sendly sms send --to "+15559876543" --text "Hi!" --from "+15551234567"
+```
+
 ### API Key Commands
 
 #### List API Keys
