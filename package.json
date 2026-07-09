@@ -65,6 +65,9 @@
       "labels": {
         "description": "Organize conversations and contacts with labels"
       },
+      "links": {
+        "description": "Create, list, and disable branded short links (URL shortening)"
+      },
       "drafts": {
         "description": "Human-in-the-loop drafts — create, approve, or reject pending sends"
       },

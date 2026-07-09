@@ -73,9 +73,9 @@ export default class TemplatesEnhance extends AuthenticatedCommand {
       });
     }
 
-    if (!text && !flags["message-type"]) {
+    if (!text) {
       error(
-        "Provide text via --text, --file, positional arg, or stdin (or at least --message-type for a template suggestion).",
+        "Provide text to enhance via --text, --file, a positional arg, or stdin.",
       );
       this.exit(1);
     }

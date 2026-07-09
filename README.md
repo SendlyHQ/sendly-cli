@@ -132,6 +132,23 @@ sendly sms batch --file messages.json --dry-run
 # - Credit balance check
 ```
 
+#### Send a Group MMS
+
+Send to 2-8 recipients (US & Canada only) in a single group thread — everyone
+sees the group and replies fan out to all participants. Group messaging is an
+A2P 10DLC capability, so the sending number must be an MMS-enabled,
+10DLC-registered number you own (omit `--from` to use your default sender).
+
+```bash
+sendly sms group --to "+14155551234,+14155555678" --text "Team sync at noon?"
+
+# Attach media
+sendly sms group --to "+14155551234,+14155555678" --media-url https://example.com/flyer.jpg
+
+# Marketing (applies quiet-hours rules; group MMS defaults to transactional)
+sendly sms group --to "+14155551234,+14155555678" --text "Sale!" --type marketing
+```
+
 #### Schedule a Message
 
 ```bash
@@ -184,6 +201,37 @@ from it (see [Send from a number you own](https://sendly.live/docs/how-to/send-f
 ```bash
 sendly sms send --to "+15551234567" --text "Hi!" --from "+447111111111"
 ```
+
+#### Show a Number
+
+```bash
+sendly numbers get num_abc123
+```
+
+Includes whether it's your workspace default sender and any scheduled release.
+
+#### Update a Number
+
+Make a number your default sender, or cancel a scheduled release. At least one
+of `--default` / `--keep` is required:
+
+```bash
+# Make this number the workspace default sender (must be active)
+sendly numbers update num_abc123 --default
+
+# Cancel a scheduled release and keep the number
+sendly numbers update num_abc123 --keep
+```
+
+#### Release a Number
+
+```bash
+sendly numbers release num_abc123
+```
+
+Paid purchases are scheduled to release at the end of the billing period (undo
+with `sendly numbers update <id> --keep`); everything else releases immediately.
+Add `--yes` to skip the confirmation prompt.
 
 ### 10DLC Commands
 
@@ -270,6 +318,21 @@ sendly keys create --name "Production Key" --type live
 ```bash
 sendly keys revoke key_abc123
 ```
+
+#### Rotate a Key
+
+Generate a replacement key while keeping the old one valid for a grace period
+(24-168 hours, default 24), so you can roll deployments over before the old key
+expires:
+
+```bash
+sendly keys rotate key_abc123
+
+# Keep the old key alive for 48 hours
+sendly keys rotate key_abc123 --grace-period 48 --yes
+```
+
+The new `sk_…` secret is shown once — store it immediately.
 
 ### Credit Commands
 
@@ -471,6 +534,42 @@ sendly templates delete tpl_abc123 --force
 
 ```bash
 sendly templates presets
+```
+
+### Link Commands (URL Shortening)
+
+Mint branded, owned-domain short links for your destination URLs. Branded short
+links improve deliverability (carriers filter public shorteners) and give you
+per-link click analytics. URL shortening is gated behind the `url_shortener`
+rollout flag — until it's enabled for your account these commands return
+`not_enabled`.
+
+#### Create a Short Link
+
+```bash
+sendly links create https://example.com/spring-sale
+```
+
+#### List Your Short Links
+
+Newest first, with click counts:
+
+```bash
+sendly links list
+
+# Paginate
+sendly links list --limit 20 --offset 20
+```
+
+#### Disable / Re-enable a Short Link
+
+The per-link kill switch — a disabled link's redirect returns 404:
+
+```bash
+sendly links disable Ab3xY7
+
+# Re-enable
+sendly links disable Ab3xY7 --enable
 ```
 
 ### Logs Commands

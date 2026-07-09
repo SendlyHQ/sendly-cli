@@ -4,6 +4,26 @@ import { apiClient } from "../../lib/api-client.js";
 import { success, error, json, colors, isJsonMode } from "../../lib/output.js";
 import inquirer from "inquirer";
 
+interface RotateResponse {
+  newKey: {
+    id: string;
+    name: string;
+    type?: "test" | "live";
+    scopes?: string[];
+    isActive?: boolean;
+    createdAt?: string;
+    expiresAt?: string | null;
+    // The raw `sk_…` secret — shown only on this response, never again.
+    key: string;
+    warning: string;
+  };
+  oldKey: {
+    id: string;
+    expiresAt?: string | null;
+  };
+  message: string;
+}
+
 export default class KeysRotate extends AuthenticatedCommand {
   static description = "Rotate an API key (generate new key, optionally keep old one active)";
 
@@ -24,7 +44,8 @@ export default class KeysRotate extends AuthenticatedCommand {
     ...AuthenticatedCommand.baseFlags,
     "grace-period": Flags.integer({
       char: "g",
-      description: "Hours to keep old key active (0 = immediate revocation)",
+      description:
+        "Hours to keep the old key active during rotation (24-168, default 24)",
     }),
     yes: Flags.boolean({
       char: "y",
@@ -58,33 +79,33 @@ export default class KeysRotate extends AuthenticatedCommand {
         body.gracePeriodHours = flags["grace-period"];
       }
 
-      const response = await apiClient.post<{
-        newKey: { id: string; name: string; createdAt: string };
-        key: string;
-        oldKeyExpiresAt?: string;
-      }>(`/api/v1/account/keys/${args.keyId}/rotate`, body);
+      const response = await apiClient.post<RotateResponse>(
+        `/api/v1/account/keys/${args.keyId}/rotate`,
+        body,
+      );
 
       if (isJsonMode()) {
-        json({
-          success: true,
-          newKeyId: response.newKey.id,
-          key: response.key,
-          oldKeyExpiresAt: response.oldKeyExpiresAt,
-        });
+        json(response);
         return;
       }
 
       success("API key rotated", {
         "New Key ID": response.newKey.id,
-        "New Key": colors.highlight(response.key),
+        "New Key": colors.highlight(response.newKey.key),
         Name: response.newKey.name,
-        ...(response.oldKeyExpiresAt && {
-          "Old Key Expires": new Date(response.oldKeyExpiresAt).toLocaleString(),
+        ...(response.oldKey?.expiresAt && {
+          "Old Key Expires": new Date(
+            response.oldKey.expiresAt,
+          ).toLocaleString(),
         }),
       });
 
       this.log("");
-      this.log(colors.warning("Save this key - it won't be shown again!"));
+      this.log(
+        colors.warning(
+          response.newKey.warning || "Save this key - it won't be shown again!",
+        ),
+      );
     } catch (err: any) {
       if (err.message?.includes("not_found") || err.message?.includes("404")) {
         error(`Key not found: ${args.keyId}`);

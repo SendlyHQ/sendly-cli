@@ -25,13 +25,13 @@ const ALLOWED_EXTS = [".jpg", ".jpeg", ".png", ".gif"];
  * `sendly sms upload-media <file>` — upload an image for MMS.
  *
  * Wraps `POST /api/v1/media`. Returns a public URL the caller passes as
- * `--media` to `sms send` / `sms batch`. Flag-gated behind `enable_mms`
+ * `--media-url` to `sms send`. Flag-gated behind `enable_mms`
  * on the server — if your account doesn't have MMS, the server returns
  * 403 and this command surfaces it.
  */
 export default class SmsUploadMedia extends AuthenticatedCommand {
   static description =
-    "Upload a JPEG/PNG/GIF image for MMS and get back a public URL to pass to `sms send --media`. Requires MMS to be enabled for your account.";
+    "Upload a JPEG/PNG/GIF image for MMS and get back a public URL to pass to `sms send --media-url`. Requires MMS to be enabled for your account.";
 
   static examples = [
     "<%= config.bin %> sms upload-media ./promo.jpg",
@@ -105,7 +105,7 @@ export default class SmsUploadMedia extends AuthenticatedCommand {
     console.log(
       "    " +
         colors.code(
-          `sendly sms send --to +15551234567 --text "Hi" --media "${resp.url}"`,
+          `sendly sms send --to +15551234567 --text "Hi" --media-url "${resp.url}"`,
         ),
     );
   }
