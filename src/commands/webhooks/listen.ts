@@ -64,7 +64,7 @@ export default class WebhooksListen extends AuthenticatedCommand {
       description:
         "Comma-separated list of events to listen for. Default subscribes to all message.* and contact.* / contacts.* events so nothing is missed during local dev.",
       default:
-        "message.sent,message.delivered,message.failed,message.bounced,message.retrying,message.received,message.opt_out,message.opt_in,contact.auto_flagged,contact.marked_valid,contacts.lookup_completed,contacts.bulk_marked_valid",
+        "message.sent,message.delivered,message.failed,message.bounced,message.retrying,message.received,message.opt_out,message.opt_in,contact.auto_flagged,contact.marked_valid,contacts.lookup_completed,contacts.bulk_marked_valid,brand.verified,brand.failed,campaign.approved,campaign.rejected,campaign.suspended,assignment.confirmed,assignment.failed,port.completed,port_out.requested,port_out.completed,port_out.rejected,port_out.cancelled,number.activated,number.failed,number.requirements_required,number.released",
     }),
   };
 
