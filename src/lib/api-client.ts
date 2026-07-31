@@ -72,7 +72,7 @@ export class ApiError extends Error {
 export class AuthenticationError extends ApiError {
   constructor(
     message: string = "Authentication failed",
-    hint: string = "Run 'sendly login' to authenticate, or check your API key with 'sendly config show'",
+    hint: string = "Run 'sendly login' to authenticate, or check your current auth with 'sendly whoami'",
   ) {
     super("authentication_error", message, 401, undefined, hint);
     this.name = "AuthenticationError";
@@ -106,6 +106,15 @@ export class InsufficientCreditsError extends ApiError {
       "Check your balance with 'sendly credits', or add credits at https://sendly.live/dashboard/billing";
     super("insufficient_credits", message, 402, undefined, hint);
     this.name = "InsufficientCreditsError";
+  }
+}
+
+export class PaymentMethodRequiredError extends ApiError {
+  constructor(message: string = "A payment method is required") {
+    const hint =
+      "Add a card at https://sendly.live/dashboard/billing, then try again";
+    super("payment_method_required", message, 402, undefined, hint);
+    this.name = "PaymentMethodRequiredError";
   }
 }
 
@@ -340,9 +349,16 @@ class ApiClient {
       case 400:
         throw new ValidationError(message, details);
       case 402:
+        // A bare 402 can mean either "out of credits" or "no card on file" —
+        // they need opposite remedies, so branch on the server error code
+        // instead of always steering the user to buy credits.
+        if (error === "payment_method_required")
+          throw new PaymentMethodRequiredError(message);
         throw new InsufficientCreditsError(message);
       case 404:
-        throw new NotFoundError(message);
+        // If the server sent no message, use NotFoundError's friendly default
+        // ("Resource not found") rather than a bare "HTTP 404".
+        throw new NotFoundError(data?.message || undefined);
       case 429:
         const retryAfter = data?.retryAfter || 60;
         throw new RateLimitError(retryAfter, message);

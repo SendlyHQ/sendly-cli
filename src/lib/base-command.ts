@@ -42,8 +42,11 @@ export abstract class BaseCommand extends Command {
   }
 
   protected async catch(err: Error): Promise<void> {
+    // Every typed branch includes the machine-readable `code` so scripts in
+    // JSON mode can branch on it (previously only unclassified ApiErrors did).
     if (err instanceof ApiKeyRequiredError) {
       error(err.message, {
+        code: err.code,
         hint: err.hint,
       });
       this.exit(1);
@@ -51,6 +54,7 @@ export abstract class BaseCommand extends Command {
 
     if (err instanceof AuthenticationError) {
       error(err.message, {
+        code: err.code,
         hint: err.hint,
       });
       this.exit(1);
@@ -58,6 +62,7 @@ export abstract class BaseCommand extends Command {
 
     if (err instanceof RateLimitError) {
       error(err.message, {
+        code: err.code,
         "Retry after": `${err.retryAfter} seconds`,
         hint: err.hint,
       });
@@ -66,6 +71,7 @@ export abstract class BaseCommand extends Command {
 
     if (err instanceof InsufficientCreditsError) {
       error(err.message, {
+        code: err.code,
         hint: err.hint,
       });
       this.exit(1);
@@ -73,6 +79,7 @@ export abstract class BaseCommand extends Command {
 
     if (err instanceof NotFoundError) {
       error(err.message, {
+        code: err.code,
         hint: err.hint,
       });
       this.exit(1);
@@ -80,6 +87,7 @@ export abstract class BaseCommand extends Command {
 
     if (err instanceof ValidationError) {
       error(err.message, {
+        code: err.code,
         hint: err.hint,
         ...(err.details || {}),
       });

@@ -48,6 +48,8 @@ export default class Countries extends BaseCommand {
 
     const resp = await apiClient.get<{ countries?: Country[] } | Country[]>(
       "/api/v1/countries",
+      undefined,
+      false,
     );
     const all: Country[] = Array.isArray(resp)
       ? resp

@@ -257,9 +257,13 @@ export async function getAuthInfo(): Promise<{
     return { authenticated: false, environment };
   }
 
+  // Detect the key type from the key actually in use. Env var takes
+  // precedence over the stored key, mirroring getAuthToken() — otherwise a
+  // live SENDLY_API_KEY displays as "test (sandbox)" and vice versa.
+  const activeKey = process.env.SENDLY_API_KEY || apiKey;
   let keyType: string | undefined;
-  if (apiKey) {
-    keyType = apiKey.startsWith("sk_test_") ? "test" : "live";
+  if (activeKey) {
+    keyType = activeKey.startsWith("sk_test_") ? "test" : "live";
   }
 
   return {

@@ -56,6 +56,11 @@ interface BuyResponse {
   number?: OwnedNumber;
   requirements?: unknown;
   action?: BuyAction;
+  // US local numbers land owned-but-unregistered: they reach status "active"
+  // at the carrier but the send-gate blocks them until they're assigned to a
+  // registered 10DLC campaign. The server flags that here so we don't tell the
+  // user a dead number is ready.
+  registrationRequired?: boolean;
 }
 
 interface ListNumbersResponse {
@@ -181,23 +186,39 @@ export default class NumbersBuy extends AuthenticatedCommand {
     }
 
     // status === "provisioning"
+    const registrationRequired = response.registrationRequired === true;
+
     if (isJsonMode()) {
-      // Wait for activation then emit the final number record.
+      // Wait for activation then emit the final number record, preserving the
+      // registration signal so an automated caller knows the number can't send
+      // until it's assigned to a 10DLC campaign.
       const active = await this.waitForActive(selected.phoneNumber);
-      json(active ?? response);
+      json(active ? { ...active, registrationRequired } : response);
       return;
     }
 
     info(`Order accepted for ${colors.code(selected.phoneNumber)} — provisioning...`);
     const active = await this.waitForActive(selected.phoneNumber);
 
-    if (active) {
+    if (active && registrationRequired) {
+      success("Number is active — but not yet able to send", {
+        number: active.phoneNumber,
+        id: active.id,
+        country: active.countryCode,
+        type: active.phoneNumberType,
+        note: "A US local number must be assigned to a registered 10DLC campaign before it can send. Set one up with `sendly 10dlc`, then assign this number.",
+      });
+    } else if (active) {
       success("Number is active", {
         number: active.phoneNumber,
         id: active.id,
         country: active.countryCode,
         type: active.phoneNumberType,
       });
+    } else if (registrationRequired) {
+      warn(
+        "Number ordered. Once active it still can't send until it's assigned to a registered 10DLC campaign — set one up with `sendly 10dlc`, then check `sendly numbers list`.",
+      );
     } else {
       warn(
         "Number is still provisioning. It usually activates within a few minutes — check `sendly numbers list`.",
