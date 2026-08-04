@@ -79,7 +79,10 @@
         "description": "Browse, search, and buy phone numbers across supported countries"
       },
       "whatsapp": {
-        "description": "Connect WhatsApp senders, manage templates, and send messages"
+        "description": "Connect WhatsApp senders, manage templates and profiles, and send messages"
+      },
+      "rcs": {
+        "description": "Send RCS messages with rich cards and suggestion chips; list agents and check recipient capability"
       },
       "10dlc": {
         "description": "10DLC A2P messaging registration — brands, campaigns, number assignment"

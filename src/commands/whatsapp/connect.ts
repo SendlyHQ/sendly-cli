@@ -90,7 +90,7 @@ export default class WhatsappConnect extends AuthenticatedCommand {
       startSpinner.stop();
     } catch (err: any) {
       startSpinner.stop();
-      if (err instanceof NotFoundError && err.message === "HTTP 404") {
+      if (err instanceof NotFoundError && err.message === "Resource not found") {
         error("WhatsApp isn't available on your workspace yet.", {
           hint: "WhatsApp is rolling out gradually — contact support@sendly.live for early access.",
         });

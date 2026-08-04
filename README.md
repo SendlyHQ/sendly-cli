@@ -299,6 +299,135 @@ Then send from it:
 sendly sms send --to "+15559876543" --text "Hi!" --from "+15551234567"
 ```
 
+### WhatsApp Commands
+
+Connect a number you own to WhatsApp and message customers over it —
+free-form text inside the 24-hour reply window, approved templates any time.
+One-time $19 connection fee, no monthly fee. Connecting, managing templates,
+and editing profiles require a live API key. WhatsApp is rolling out
+gradually; if these commands report it isn't available yet, contact
+support@sendly.live for early access.
+
+#### Connect a Number
+
+```bash
+sendly whatsapp connect --number "+15559876543"
+```
+
+Prints a secure link a person must open and sign in with Facebook to finish
+connecting; the command waits until the sender is active.
+
+#### Check Connection Status
+
+Defaults to your most recent connection attempt:
+
+```bash
+sendly whatsapp status
+
+# Or a specific signup
+sendly whatsapp status 3f6a1c9e-0000-0000-0000-000000000000
+```
+
+#### List WhatsApp Senders
+
+```bash
+sendly whatsapp senders
+```
+
+#### Send a Message
+
+```bash
+# Free-form text (only inside the 24-hour reply window)
+sendly whatsapp send --to "+15551234567" --from "+15559876543" --text "Your table is ready!"
+
+# Approved template (reaches contacts any time)
+sendly whatsapp send --to "+447700900123" --from "+15559876543" \
+  --template order_shipped --language en_US --var 1=TinyFat --var 2=4821
+```
+
+#### Manage Templates
+
+Templates are reviewed by Meta (typically 24-48h) and are the only way to
+message outside the 24-hour window. Every `{{n}}` body variable needs an
+`--example n=value`:
+
+```bash
+sendly whatsapp templates list
+
+sendly whatsapp templates create --sender "+15559876543" --name order_shipped \
+  --language en_US --category utility \
+  --body "Hi {{1}}, order {{2}} shipped!" --example 1=TinyFat --example 2=4821
+
+# Edit an approved or rejected template and resubmit it for review
+sendly whatsapp templates update 3f6a1c9e-0000-0000-0000-000000000000 \
+  --body "Hi {{1}}, your order shipped!" --example 1=TinyFat
+
+# Delete (Meta reserves the name for up to 30 days)
+sendly whatsapp templates delete 3f6a1c9e-0000-0000-0000-000000000000
+```
+
+#### Business Profile
+
+The profile customers see when they tap your business name in WhatsApp:
+
+```bash
+sendly whatsapp profile get "+15559876543"
+
+sendly whatsapp profile update "+15559876543" \
+  --about "Family-run bakery in Austin" --website https://example.com
+```
+
+### RCS Commands
+
+Send RCS messages from your brand's verified RCS agent — rich text with
+tappable suggestion chips, or rich cards with images. Recipients whose device
+doesn't support RCS automatically get the text delivered as plain SMS (rich
+cards have no SMS form). Requires a live API key — RCS delivery is never
+simulated on a test key. RCS is rolling out gradually; agents are registered
+for your brand by the Sendly team — contact support@sendly.live to get set up.
+
+#### Send a Message
+
+```bash
+sendly rcs send --to "+15125550190" --text "Your order shipped!"
+
+# With suggestion chips
+sendly rcs send --to "+15125550190" --text "Need anything else?" \
+  --suggest-reply "Track order=TRACK" \
+  --suggest-url "View receipt=RECEIPT=https://example.com/r/4821"
+
+# Rich card (RCS-capable recipients only)
+sendly rcs send --to "+15125550190" \
+  --card-title "Spring sale" \
+  --card-description "20% off everything this weekend" \
+  --card-media https://example.com/sale.jpg
+
+# Fail instead of falling back to SMS
+sendly rcs send --to "+15125550190" --text "RCS only please" --no-fallback
+```
+
+The output shows what actually happened: native RCS delivery, or the SMS
+fallback (suggestion chips have no SMS form and are dropped).
+
+#### List Your Agents
+
+```bash
+sendly rcs agents
+```
+
+Pass an agent's id as `--agent` on sends and capability checks when your
+workspace has more than one. Agents in `testing` reach invited test devices
+only; `approved` agents reach everyone.
+
+#### Check Recipient Capability
+
+Know before sending whether a recipient gets native RCS or the SMS fallback.
+Capability checks reach the carrier network, so they require a live API key:
+
+```bash
+sendly rcs capability --to "+15125550190"
+```
+
 ### API Key Commands
 
 #### List API Keys
