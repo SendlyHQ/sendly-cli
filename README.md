@@ -167,6 +167,14 @@ sendly sms scheduled
 sendly sms cancel sched_abc123
 ```
 
+#### Idempotent Sends
+
+Every send command (`sms send`, `sms group`, `sms schedule`, `sms batch`, `rcs send`, `whatsapp send`) accepts `--idempotency-key` (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again, so a crashed script or CI job is safe to re-run. Without the flag, non-batch sends carry an auto-generated `Idempotency-Key` that is reused across the CLI's own network-error retries, so a retry of a request that already reached the API does not send twice.
+
+```bash
+sendly sms send --to "+15551234567" --text "Your order has shipped!" --idempotency-key "order-4821-shipped"
+```
+
 ### Numbers Commands
 
 Buy international phone numbers and send from them. (US & Canada use toll-free
