@@ -46,6 +46,10 @@ export default class Send extends AuthenticatedCommand {
       char: "f",
       description: "Sender phone number (optional, uses default if not set)",
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -65,6 +69,8 @@ export default class Send extends AuthenticatedCommand {
           text: flags.text,
           ...(flags.from && { from: flags.from }),
         },
+        true,
+        { idempotencyKey: flags["idempotency-key"] },
       );
 
       sendSpinner.stop();

@@ -15,6 +15,7 @@ vi.mock("../../src/lib/config.js", () => ({
     if (key === "baseUrl") return "https://sendly.live";
     return mockStore[key];
   }),
+  resolveBaseUrl: vi.fn(() => "https://sendly.live"),
   setApiKey: vi.fn((key: string) => {
     mockStore.apiKey = key;
   }),

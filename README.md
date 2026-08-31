@@ -779,10 +779,59 @@ Override CLI configuration with environment variables:
 |----------|-------------|
 | `SENDLY_API_KEY` | API key for authentication |
 | `SENDLY_BASE_URL` | API base URL (default: `https://sendly.live`) |
+| `SENDLY_API_URL` | Older spelling of `SENDLY_BASE_URL`; used only when `SENDLY_BASE_URL` is unset |
 | `SENDLY_OUTPUT_FORMAT` | Output format: `text` or `json` |
 | `SENDLY_NO_COLOR` | Disable colored output |
 | `SENDLY_TIMEOUT` | Request timeout in milliseconds |
 | `SENDLY_MAX_RETRIES` | Maximum retry attempts |
+
+### Which API host a command talks to
+
+The base URL is resolved once per command, highest priority first:
+
+1. An explicit per-command flag, where a command offers one (none do today).
+2. `SENDLY_BASE_URL`
+3. `SENDLY_API_URL`
+4. `baseUrl` in the config file (`sendly config set baseUrl https://...`)
+5. `https://sendly.live`
+
+An empty or whitespace-only variable counts as unset. A value from the
+environment must be a scheme and host with no path, query or fragment — the CLI
+appends the API path itself, so `https://example.com/api/v1` is rejected rather
+than turned into `https://example.com/api/v1/api/v1/messages`.
+
+#### Hosts the CLI will send credentials to
+
+`SENDLY_BASE_URL` and `SENDLY_API_URL` come from the ambient environment, so the
+CLI will not hand your API key to just any host they name:
+
+| Host | Allowed |
+|------|---------|
+| `https://sendly.live` and its subdomains | Always |
+| Loopback (`localhost`, `*.localhost`, `127.0.0.0/8`, `::1`), http or https | Always |
+| Any other host, over `https://`, with a test key (`sk_test_…`) | Allowed |
+| Any other host, over plain `http://` | Refused — cleartext |
+| Any other host, with a live key (`sk_live_…`) or a `sendly login` session | Refused |
+
+A refusal names the host and what to do instead, and no request is made. If you
+genuinely need a live key pointed at another host, store it deliberately with
+`sendly config set baseUrl https://...`; the stored value is your own explicit
+local setting and is used as written.
+
+Only commands that actually open a connection fail on a bad value. Read-only
+commands (`sendly config list`, `sendly whoami`, `sendly doctor`) keep working
+and report the problem: `effectiveBaseUrl` is `null` and `baseUrlError` carries
+the reason.
+
+`sendly config get baseUrl` and the `baseUrl` field of `sendly config list`
+report what is stored in the config file. To see the host actually in use, run
+`sendly whoami` (or read `effectiveBaseUrl` from `sendly config list --json`).
+
+```bash
+# Point every command at a local server for one shell session
+export SENDLY_BASE_URL=http://localhost:5001
+sendly whoami
+```
 
 ## Output Formats
 

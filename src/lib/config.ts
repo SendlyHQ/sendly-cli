@@ -4,7 +4,7 @@
  *
  * Environment Variables (take precedence over config file):
  * - SENDLY_API_KEY: API key for authentication
- * - SENDLY_BASE_URL: Custom API endpoint
+ * - SENDLY_BASE_URL: Custom API endpoint (alias: SENDLY_API_URL)
  * - SENDLY_OUTPUT_FORMAT: Default output format (human/json)
  * - SENDLY_NO_COLOR: Disable colored output (any value)
  * - SENDLY_TIMEOUT: Request timeout in ms (default: 30000)
@@ -116,9 +116,14 @@ if (!fs.existsSync(CONFIG_DIR)) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
 }
 
+/**
+ * The API host used when nothing else is configured.
+ */
+export const PRODUCTION_BASE_URL = "https://sendly.live";
+
 const DEFAULT_CONFIG: SendlyConfig = {
   environment: "test",
-  baseUrl: "https://sendly.live",
+  baseUrl: PRODUCTION_BASE_URL,
   defaultFormat: "human",
   colorEnabled: true,
   timeout: 30000,
@@ -237,6 +242,168 @@ function initializeConfig(): Conf<SendlyConfig> {
 const config = initializeConfig();
 
 /**
+ * Normalize a base URL supplied through the environment (or a flag): trim
+ * surrounding whitespace and drop trailing slashes so callers can append a
+ * path directly. Empty and whitespace-only values count as "not set".
+ */
+function normalizeBaseUrl(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.replace(/\/+$/, "") || trimmed;
+}
+
+/**
+ * True for hosts whose traffic never leaves the machine: `localhost` and any
+ * `*.localhost` name, the 127.0.0.0/8 block, and IPv6 `::1`.
+ */
+function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
+  return (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "::1" ||
+    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)
+  );
+}
+
+/**
+ * True for the production API host, or one of its subdomains, over TLS.
+ */
+function isProductionHost(parsed: URL): boolean {
+  if (parsed.protocol !== "https:") return false;
+  const production = new URL(PRODUCTION_BASE_URL).hostname.toLowerCase();
+  const host = parsed.hostname.toLowerCase();
+  return host === production || host.endsWith(`.${production}`);
+}
+
+/**
+ * The kind of credential a request would carry, using the same rule as
+ * getAuthInfo(): a key is "test" only when it carries the `sk_test_` prefix.
+ * Stored session tokens count as live because they authorize the real account.
+ */
+function activeCredentialKind(): "live" | "test" | "none" {
+  const token = getAuthToken();
+  if (!token) return "none";
+  return token.startsWith("sk_test_") ? "test" : "live";
+}
+
+/**
+ * Check a base URL supplied for this run (a flag or an environment variable)
+ * and return why it is unusable, or undefined when it is fine.
+ *
+ * A supplied value must be an `http://` or `https://` origin with no path,
+ * query or fragment — the CLI appends the API path itself, so a path here
+ * would be duplicated into `/api/v1/api/v1/...`.
+ *
+ * It must also be a host the CLI is willing to hand credentials to. The
+ * production host over TLS and loopback addresses always qualify. Anywhere
+ * else, a live API key or a stored session token is refused outright, and a
+ * test key still requires TLS. The stored `baseUrl` in the config file is not
+ * subject to this check: it is written by an explicit local command rather
+ * than picked up from the ambient environment.
+ */
+function checkSuppliedBaseUrl(value: string, source: string): string | undefined {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return `${source} is not a valid URL: "${value}". Use a full origin, e.g. https://sendly.live`;
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return `${source} must be an http:// or https:// URL: "${value}". Use a full origin, e.g. http://localhost:5001`;
+  }
+
+  if (parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    return `${source} must be an origin with no path: "${value}". The CLI appends the API path itself, so use "${parsed.origin}"`;
+  }
+
+  if (isProductionHost(parsed) || isLoopbackHost(parsed.hostname)) {
+    return undefined;
+  }
+
+  if (activeCredentialKind() === "live") {
+    return `${source} points at ${parsed.origin}, but a live credential is in use. Refusing to send a live API key to any host other than ${PRODUCTION_BASE_URL} or a loopback address. Use a test key (sk_test_...) or point ${source} at http://localhost:PORT`;
+  }
+
+  if (parsed.protocol !== "https:") {
+    return `${source} must use https:// for a host other than localhost: "${value}". Refusing to send credentials over cleartext http`;
+  }
+
+  return undefined;
+}
+
+/**
+ * The outcome of resolving the API host.
+ */
+export interface BaseUrlResolution {
+  /**
+   * The value in effect. When `error` is set this is the rejected value, kept
+   * so it can be shown back to the user; it must not be used for a request.
+   */
+  url: string;
+  /** Where the value came from, phrased for use in a message. */
+  source: string;
+  /** Why the value cannot be used, when it cannot. */
+  error?: string;
+}
+
+/**
+ * Resolve the API host without throwing.
+ *
+ * Resolution order, highest priority first:
+ *   1. `override` - an explicit per-command value. No command exposes a
+ *      base-URL flag today; this parameter is where one would feed in.
+ *   2. `SENDLY_BASE_URL` environment variable.
+ *   3. `SENDLY_API_URL` environment variable (older documented spelling).
+ *   4. `baseUrl` in the config file (`sendly config set baseUrl ...`).
+ *   5. `PRODUCTION_BASE_URL`.
+ *
+ * This mirrors how the API key resolves in getAuthToken(): the environment
+ * wins over stored config, and an empty variable counts as unset. Values from
+ * the environment or a flag are normalized and checked; the stored config
+ * value is returned exactly as written so existing installs are untouched.
+ *
+ * Read-only callers (`config list`, `whoami`, `doctor`) use this so a bad
+ * value cannot break a command that never opens a socket. Anything that is
+ * about to make a request uses resolveBaseUrl() instead.
+ *
+ * Note that SENDLY_API_BASE is deliberately not consulted: elsewhere in the
+ * tooling that name carries a version-suffixed base (`.../api/v1`), and the
+ * CLI appends the version itself.
+ */
+export function resolveBaseUrlSafe(override?: string): BaseUrlResolution {
+  const supplied: [string, string | undefined][] = [
+    ["The --base-url value", override],
+    ["SENDLY_BASE_URL", process.env.SENDLY_BASE_URL],
+    ["SENDLY_API_URL", process.env.SENDLY_API_URL],
+  ];
+
+  for (const [source, raw] of supplied) {
+    const url = normalizeBaseUrl(raw);
+    if (!url) continue;
+    const error = checkSuppliedBaseUrl(url, source);
+    return error ? { url, source, error } : { url, source };
+  }
+
+  const stored = config.get("baseUrl");
+  return stored
+    ? { url: stored, source: "the config file" }
+    : { url: PRODUCTION_BASE_URL, source: "the built-in default" };
+}
+
+/**
+ * Resolve the API host for a request, throwing when the resolved value is not
+ * one the CLI will send credentials to. Callers that only display the host
+ * should use resolveBaseUrlSafe().
+ */
+export function resolveBaseUrl(override?: string): string {
+  const resolved = resolveBaseUrlSafe(override);
+  if (resolved.error) throw new Error(resolved.error);
+  return resolved.url;
+}
+
+/**
  * Get effective config value with environment variable override
  * Priority: env var > config file > default
  */
@@ -251,10 +418,7 @@ export function getEffectiveValue<K extends keyof SendlyConfig>(
       }
       break;
     case "baseUrl":
-      if (process.env.SENDLY_BASE_URL) {
-        return process.env.SENDLY_BASE_URL as SendlyConfig[K];
-      }
-      break;
+      return resolveBaseUrlSafe().url as SendlyConfig[K];
     case "defaultFormat":
       if (process.env.SENDLY_OUTPUT_FORMAT) {
         const format = process.env.SENDLY_OUTPUT_FORMAT.toLowerCase();

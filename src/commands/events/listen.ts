@@ -1,6 +1,6 @@
 import { Flags } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
-import { getAuthToken, getEffectiveValue } from "../../lib/config.js";
+import { getAuthToken, resolveBaseUrl } from "../../lib/config.js";
 import { colors, json, isJsonMode } from "../../lib/output.js";
 
 export default class EventsListen extends AuthenticatedCommand {
@@ -24,7 +24,7 @@ export default class EventsListen extends AuthenticatedCommand {
     const { flags } = await this.parse(EventsListen);
 
     const apiKey = getAuthToken();
-    const baseUrl = getEffectiveValue("baseUrl");
+    const baseUrl = resolveBaseUrl();
 
     const url = new URL("/api/v1/events", baseUrl);
     if (flags.types) url.searchParams.set("types", flags.types);

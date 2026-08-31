@@ -2,7 +2,12 @@ import { BaseCommand } from "../lib/base-command.js";
 import { getAuthInfo } from "../lib/auth.js";
 import { apiClient } from "../lib/api-client.js";
 import { success, info, keyValue, colors, json } from "../lib/output.js";
-import { getConfigValue, getConfigPath, getCurrentOrg } from "../lib/config.js";
+import {
+  getConfigPath,
+  getCurrentOrg,
+  resolveBaseUrlSafe,
+  PRODUCTION_BASE_URL,
+} from "../lib/config.js";
 
 export default class Whoami extends BaseCommand {
   static description = "Show current authentication status";
@@ -17,6 +22,7 @@ export default class Whoami extends BaseCommand {
     const { flags } = await this.parse(Whoami);
 
     const authInfo = await getAuthInfo();
+    const baseUrl = resolveBaseUrlSafe();
 
     // Local config first (set by `sendly login` / `sendly teams switch`).
     // API-key-only users have no local org, so fall back to asking the server
@@ -48,6 +54,8 @@ export default class Whoami extends BaseCommand {
         userId: authInfo.userId,
         environment: authInfo.environment,
         keyType: authInfo.keyType,
+        baseUrl: baseUrl.error ? null : baseUrl.url,
+        ...(baseUrl.error ? { baseUrlError: baseUrl.error } : {}),
         configPath: getConfigPath(),
         organization: org ? { id: org.id, name: org.name, slug: org.slug } : null,
       });
@@ -82,9 +90,10 @@ export default class Whoami extends BaseCommand {
     }
 
     // Show which server we're connected to
-    const baseUrl = getConfigValue("baseUrl");
-    if (baseUrl && baseUrl !== "https://sendly.live") {
-      displayData["Server"] = colors.dim(baseUrl);
+    if (baseUrl.error) {
+      displayData["Server"] = colors.error(baseUrl.error);
+    } else if (baseUrl.url !== PRODUCTION_BASE_URL) {
+      displayData["Server"] = colors.dim(baseUrl.url);
     }
 
     if (org) {

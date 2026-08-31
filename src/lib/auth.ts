@@ -13,6 +13,7 @@ import {
   getConfigValue,
   isAuthenticated,
   getAuthToken,
+  resolveBaseUrl,
 } from "./config.js";
 import { colors, spinner } from "./output.js";
 import { attachLoginKeypressHandler } from "./keypress.js";
@@ -71,7 +72,7 @@ export function generateUserCode(): string {
  * Anyone with the URL can't authorize without also seeing the terminal.
  */
 export async function browserLogin(): Promise<TokenResponse> {
-  const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
+  const baseUrl = resolveBaseUrl();
 
   // Generate TWO SEPARATE codes for security
   const deviceCode = generateDeviceCode(); // Long random, goes in URL
@@ -201,7 +202,7 @@ export async function browserLogin(): Promise<TokenResponse> {
  * Login with an API key directly
  */
 export async function apiKeyLogin(apiKey: string): Promise<void> {
-  const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
+  const baseUrl = resolveBaseUrl();
 
   // Validate the API key with the server
   const response = await fetch(`${baseUrl}/api/cli/auth/verify-key`, {

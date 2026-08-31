@@ -3,7 +3,7 @@ import { AuthenticatedCommand } from "../../lib/base-command.js";
 import { success, json, isJsonMode, spinner } from "../../lib/output.js";
 import {
   getAuthToken,
-  getConfigValue,
+  resolveBaseUrl,
   getEffectiveValue,
 } from "../../lib/config.js";
 import {
@@ -96,7 +96,7 @@ export default class EnterpriseUploadVerificationDocument extends AuthenticatedC
       throw new AuthenticationError();
     }
 
-    const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
+    const baseUrl = resolveBaseUrl();
     const timeout = getEffectiveValue("timeout");
     const url = `${baseUrl}/api/v1/enterprise/verification-document/upload`;
 

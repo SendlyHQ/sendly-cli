@@ -14,6 +14,7 @@ vi.mock("../../src/lib/config.js", () => ({
     if (key === "baseUrl") return "https://sendly.live";
     return undefined;
   }),
+  resolveBaseUrl: vi.fn(() => "https://sendly.live"),
   getEffectiveValue: vi.fn((key: string) => {
     if (key === "baseUrl") return "https://sendly.live";
     if (key === "maxRetries") return 3;

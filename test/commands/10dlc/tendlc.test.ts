@@ -12,6 +12,7 @@ vi.mock("../../../src/lib/config.js", () => ({
   getAuthToken: vi.fn(() => "sk_live_v1_mock"),
   getStoredAccessToken: vi.fn(() => undefined),
   setAuthTokens: vi.fn(),
+  resolveBaseUrl: vi.fn(() => "https://sendly.live"),
   getConfigValue: vi.fn((key: string) => {
     if (key === "baseUrl") return "https://sendly.live";
     return undefined;

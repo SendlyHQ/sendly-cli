@@ -1,7 +1,11 @@
 import { Args } from "@oclif/core";
 import { BaseCommand } from "../../lib/base-command.js";
-import { setConfig, type SendlyConfig } from "../../lib/config.js";
-import { success, error, colors } from "../../lib/output.js";
+import {
+  setConfig,
+  resolveBaseUrl,
+  type SendlyConfig,
+} from "../../lib/config.js";
+import { success, error, warn, colors } from "../../lib/output.js";
 
 const ALLOWED_KEYS: (keyof SendlyConfig)[] = [
   "environment",
@@ -71,5 +75,20 @@ export default class ConfigSet extends BaseCommand {
 
     setConfig(key, value);
     success(`Set ${colors.code(key)} = ${colors.primary(String(value))}`);
+
+    if (key === "baseUrl") {
+      // The environment outranks the config file, so say so rather than
+      // letting the user believe this value is the one in use.
+      try {
+        const effective = resolveBaseUrl();
+        if (effective !== value) {
+          warn(
+            `SENDLY_BASE_URL (or SENDLY_API_URL) is set, so commands will use ${effective} until it is unset`,
+          );
+        }
+      } catch (err) {
+        warn((err as Error).message);
+      }
+    }
   }
 }

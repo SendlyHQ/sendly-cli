@@ -60,7 +60,7 @@ export default class EnterpriseVerificationResubmit extends AuthenticatedCommand
     }),
     "brn-country": Flags.string({ description: "BRN country code (e.g. US)" }),
     "use-case": Flags.string({
-      description: "Use case (Telnyx use-case enum value)",
+      description: "Use case (carrier use-case value)",
     }),
     "use-case-summary": Flags.string({ description: "Use case summary" }),
     "sample-messages": Flags.string({ description: "Sample messages" }),

@@ -61,6 +61,10 @@ export default class SmsSend extends AuthenticatedCommand {
       description: "Media URL to attach (MMS). Can be specified multiple times.",
       multiple: true,
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -142,6 +146,8 @@ export default class SmsSend extends AuthenticatedCommand {
           ...(flags.from && { from: flags.from }),
           ...(hasMedia && { mediaUrls }),
         },
+        true,
+        { idempotencyKey: flags["idempotency-key"] },
       );
 
       spin.stop();

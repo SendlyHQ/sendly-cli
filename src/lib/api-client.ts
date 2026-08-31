@@ -4,11 +4,12 @@
  */
 
 import { createRequire } from "node:module";
+import { randomUUID } from "node:crypto";
 import {
   getAuthToken,
   getStoredAccessToken,
-  getConfigValue,
   getEffectiveValue,
+  resolveBaseUrl,
   setAuthTokens,
 } from "./config.js";
 
@@ -21,6 +22,40 @@ const { version } = require("../../package.json") as { version: string };
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Generate an idempotency key for a logical request. Reused across retry
+ * attempts so the server can recognize a retry of a POST that actually
+ * reached it.
+ */
+function generateIdempotencyKey(): string {
+  return `sendly-cli-retry-${randomUUID()}`;
+}
+
+/**
+ * Validate and normalize a caller-supplied idempotency key. Empty and
+ * whitespace-only values are treated as absent (auto-generation still
+ * applies); invalid values fail fast before any network call.
+ */
+function normalizeIdempotencyKey(key: string | undefined): string | undefined {
+  if (key === undefined) return undefined;
+  const trimmed = key.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.length > 255 || !/^[\x20-\x7E]+$/.test(trimmed)) {
+    throw new ValidationError(
+      "Idempotency key must be 1-255 printable ASCII characters",
+    );
+  }
+  return trimmed;
+}
+
+/**
+ * True when the error carries an actual 5xx response from the server, as
+ * opposed to a network failure where the outcome of the request is unknown.
+ */
+function isServerErrorResponse(error: unknown): boolean {
+  return error instanceof ApiError && error.statusCode >= 500;
 }
 
 /**
@@ -145,7 +180,7 @@ class ApiClient {
   private refreshing: Promise<boolean> | null = null;
 
   private getBaseUrl(): string {
-    return getConfigValue("baseUrl") || "https://sendly.live";
+    return resolveBaseUrl();
   }
 
   private async ensureAuth(): Promise<string> {
@@ -243,6 +278,8 @@ class ApiClient {
       body?: Record<string, unknown>;
       query?: Record<string, string | number | boolean | undefined>;
       requireAuth?: boolean;
+      idempotencyKey?: string;
+      autoIdempotencyKey?: boolean;
     } = {},
   ): Promise<T> {
     const { body, query, requireAuth = true } = options;
@@ -258,6 +295,13 @@ class ApiClient {
       });
     }
 
+    const explicitKey = normalizeIdempotencyKey(options.idempotencyKey);
+    let idempotencyKey =
+      explicitKey ??
+      (method === "POST" && options.autoIdempotencyKey !== false
+        ? generateIdempotencyKey()
+        : undefined);
+
     let lastError: Error | undefined;
     let didRefresh = false;
 
@@ -266,9 +310,14 @@ class ApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        const headers = await this.getHeaders(requireAuth);
+        if (idempotencyKey) {
+          headers["Idempotency-Key"] = idempotencyKey;
+        }
+
         const response = await fetch(url.toString(), {
           method,
-          headers: await this.getHeaders(requireAuth),
+          headers,
           body: body ? JSON.stringify(body) : undefined,
           signal: controller.signal,
         });
@@ -302,6 +351,15 @@ class ApiClient {
 
         if (attempt === maxRetries) {
           throw error;
+        }
+
+        // A 5xx means the server responded (and may have cached that response
+        // under the key), so an auto-generated key is rotated to let the retry
+        // re-execute. Network errors leave the outcome unknown — the key is
+        // kept so the server can dedupe a request that actually went through.
+        // Caller-supplied keys are never rotated.
+        if (!explicitKey && idempotencyKey && isServerErrorResponse(error)) {
+          idempotencyKey = generateIdempotencyKey();
         }
 
         const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
@@ -388,8 +446,9 @@ class ApiClient {
     path: string,
     body?: Record<string, unknown>,
     requireAuth: boolean = true,
+    options: { idempotencyKey?: string; autoIdempotencyKey?: boolean } = {},
   ): Promise<T> {
-    return this.request<T>("POST", path, { body, requireAuth });
+    return this.request<T>("POST", path, { body, requireAuth, ...options });
   }
 
   async patch<T>(
@@ -451,6 +510,8 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${await this.ensureAuth()}`;
     }
 
+    let idempotencyKey = generateIdempotencyKey();
+
     let lastError: Error | undefined;
     let didRefresh = false;
 
@@ -461,7 +522,7 @@ class ApiClient {
 
         const response = await fetch(url, {
           method: "POST",
-          headers,
+          headers: { ...headers, "Idempotency-Key": idempotencyKey },
           body,
           signal: controller.signal,
         });
@@ -495,6 +556,12 @@ class ApiClient {
 
         if (attempt === maxRetries) {
           throw error;
+        }
+
+        // Same rotation rules as request(): rotate the auto key only after
+        // an actual 5xx response; keep it across network-error retries.
+        if (isServerErrorResponse(error)) {
+          idempotencyKey = generateIdempotencyKey();
         }
 
         const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);

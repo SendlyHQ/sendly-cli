@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
 import {
   getAuthToken,
-  getConfigValue,
+  resolveBaseUrl,
   getEffectiveValue,
 } from "../../lib/config.js";
 import { ApiError, AuthenticationError } from "../../lib/api-client.js";
@@ -104,7 +104,7 @@ export default class BusinessUpgradeResubmit extends AuthenticatedCommand {
     const token = getAuthToken();
     if (!token) throw new AuthenticationError();
 
-    const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
+    const baseUrl = resolveBaseUrl();
     const timeout = getEffectiveValue("timeout");
     const url = `${baseUrl}/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade/resubmit`;
 

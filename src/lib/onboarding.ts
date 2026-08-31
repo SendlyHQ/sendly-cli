@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from "./api-client.js";
-import { setApiKey, getConfigValue } from "./config.js";
+import { setApiKey, resolveBaseUrl } from "./config.js";
 import { success, info, error, colors, spinner } from "./output.js";
 import inquirer from "inquirer";
 
@@ -161,7 +161,7 @@ async function runQuickStart(): Promise<boolean> {
  */
 async function openProductionOnboarding(): Promise<boolean> {
   try {
-    const baseUrl = getConfigValue("baseUrl") || "https://sendly.live";
+    const baseUrl = resolveBaseUrl();
     const onboardingUrl = `${baseUrl}/onboarding`;
     
     console.log();

@@ -177,6 +177,11 @@ export default class SmsBatch extends AuthenticatedCommand {
       exclusive: ["file", "to", "reuse"],
       default: false,
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again.",
+      exclusive: ["history"],
+    }),
   };
 
   async run(): Promise<void> {
@@ -264,7 +269,13 @@ export default class SmsBatch extends AuthenticatedCommand {
    */
   private async reuseBatch(
     uploadId: string,
-    flags: { text?: string; from?: string; type?: string; "dry-run"?: boolean },
+    flags: {
+      text?: string;
+      from?: string;
+      type?: string;
+      "dry-run"?: boolean;
+      "idempotency-key"?: string;
+    },
   ): Promise<void> {
     const spin = spinner("Fetching batch data...").start();
 
@@ -324,6 +335,7 @@ export default class SmsBatch extends AuthenticatedCommand {
     from?: string;
     type?: string;
     "dry-run"?: boolean;
+    "idempotency-key"?: string;
   }): Promise<void> {
     if (!flags.text) {
       error("--text is required when using --to");
@@ -358,6 +370,7 @@ export default class SmsBatch extends AuthenticatedCommand {
     from?: string;
     type?: string;
     "dry-run"?: boolean;
+    "idempotency-key"?: string;
   }): Promise<void> {
     const filePath = flags.file!;
 
@@ -469,7 +482,12 @@ export default class SmsBatch extends AuthenticatedCommand {
    */
   private async previewOrSend(
     messages: Array<{ to: string; text: string }>,
-    flags: { from?: string; type?: string; "dry-run"?: boolean },
+    flags: {
+      from?: string;
+      type?: string;
+      "dry-run"?: boolean;
+      "idempotency-key"?: string;
+    },
     uploadId?: string,
   ): Promise<void> {
     // Check batch size
@@ -490,6 +508,9 @@ export default class SmsBatch extends AuthenticatedCommand {
     spin.start();
 
     try {
+      // The batch endpoint dedupes header-less retries server-side by hashing
+      // the request content; an auto-generated key would bypass that net for
+      // identical cross-process re-runs, so only caller-supplied keys are sent.
       const response = await apiClient.post<BatchResponse>(
         "/api/v1/messages/batch",
         {
@@ -497,6 +518,11 @@ export default class SmsBatch extends AuthenticatedCommand {
           messageType: flags.type,
           ...(flags.from && { from: flags.from }),
           ...(uploadId && { uploadId }), // Link to file upload for audit trail
+        },
+        true,
+        {
+          idempotencyKey: flags["idempotency-key"],
+          autoIdempotencyKey: false,
         },
       );
 

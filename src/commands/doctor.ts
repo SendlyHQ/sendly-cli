@@ -9,9 +9,10 @@ import {
   getAuthToken,
   getConfigPath,
   getConfigDir,
-  getEffectiveValue,
+  resolveBaseUrlSafe,
   isCI,
   isColorDisabled,
+  type BaseUrlResolution,
 } from "../lib/config.js";
 import { success, error, warn, info, json, colors } from "../lib/output.js";
 import * as fs from "node:fs";
@@ -48,6 +49,7 @@ export default class Doctor extends BaseCommand {
   };
 
   private results: DiagnosticResult[] = [];
+  private baseUrl: BaseUrlResolution = { url: "", source: "" };
 
   async run(): Promise<void> {
     const { flags } = await this.parse(Doctor);
@@ -60,6 +62,7 @@ export default class Doctor extends BaseCommand {
 
     // Run all diagnostics
     await this.checkApiKey();
+    await this.checkBaseUrl();
     await this.checkNetwork();
     await this.checkClockSkew();
     await this.checkCredits();
@@ -89,6 +92,48 @@ export default class Doctor extends BaseCommand {
     } else {
       success("All systems operational!");
     }
+  }
+
+  /**
+   * The host every network check will use, resolved once. An unusable value
+   * is the single failure reported here; the checks that depend on it are
+   * skipped rather than each restating the same problem.
+   */
+  private async checkBaseUrl(): Promise<void> {
+    this.baseUrl = resolveBaseUrlSafe();
+
+    if (this.baseUrl.error) {
+      this.addResult({
+        name: "Base URL",
+        status: "error",
+        message: "Unusable API base URL",
+        details: this.baseUrl.error,
+      });
+      return;
+    }
+
+    this.addResult({
+      name: "Base URL",
+      status: "ok",
+      message: `${this.baseUrl.url} (from ${this.baseUrl.source})`,
+    });
+  }
+
+  /**
+   * The host for a network check, or null when the base URL is unusable — in
+   * which case the check records itself as skipped so the rest still run.
+   */
+  private resolveHost(checkName: string): string | null {
+    if (this.baseUrl.error) {
+      this.addResult({
+        name: checkName,
+        status: "warning",
+        message: "Skipped (API base URL is unusable)",
+        details: "See the Base URL check above",
+      });
+      return null;
+    }
+    return this.baseUrl.url;
   }
 
   private addResult(result: DiagnosticResult): void {
@@ -151,7 +196,8 @@ export default class Doctor extends BaseCommand {
   }
 
   private async checkNetwork(): Promise<void> {
-    const baseUrl = getEffectiveValue("baseUrl");
+    const baseUrl = this.resolveHost("Network");
+    if (!baseUrl) return;
     const startTime = Date.now();
 
     try {
@@ -187,7 +233,8 @@ export default class Doctor extends BaseCommand {
   }
 
   private async checkClockSkew(): Promise<void> {
-    const baseUrl = getEffectiveValue("baseUrl");
+    const baseUrl = this.resolveHost("Clock");
+    if (!baseUrl) return;
 
     try {
       const response = await fetch(`${baseUrl}/health`, {
@@ -249,7 +296,8 @@ export default class Doctor extends BaseCommand {
       return;
     }
 
-    const baseUrl = getEffectiveValue("baseUrl");
+    const baseUrl = this.resolveHost("Credits");
+    if (!baseUrl) return;
     const token = getAuthToken();
 
     try {
@@ -316,10 +364,6 @@ export default class Doctor extends BaseCommand {
 
     if (process.env.SENDLY_API_KEY) {
       checks.push("using SENDLY_API_KEY env var");
-    }
-
-    if (process.env.SENDLY_BASE_URL) {
-      checks.push(`custom base URL: ${process.env.SENDLY_BASE_URL}`);
     }
 
     this.addResult({

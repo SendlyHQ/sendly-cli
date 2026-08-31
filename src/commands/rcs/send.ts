@@ -149,6 +149,10 @@ export default class RcsSend extends AuthenticatedCommand {
         "Fail with an error instead of delivering as SMS when the recipient doesn't support RCS",
       default: false,
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -215,6 +219,8 @@ export default class RcsSend extends AuthenticatedCommand {
               }),
           ...(flags["no-fallback"] && { fallbackToSms: false }),
         },
+        true,
+        { idempotencyKey: flags["idempotency-key"] },
       );
 
       sendSpinner.stop();

@@ -59,6 +59,10 @@ export default class SmsSchedule extends AuthenticatedCommand {
       options: ["marketing", "transactional"],
       default: "marketing",
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of scheduling again.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -206,6 +210,8 @@ export default class SmsSchedule extends AuthenticatedCommand {
           messageType: flags.type,
           ...(flags.from && { from: flags.from }),
         },
+        true,
+        { idempotencyKey: flags["idempotency-key"] },
       );
 
       spin.stop();

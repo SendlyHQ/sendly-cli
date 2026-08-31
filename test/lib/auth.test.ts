@@ -33,6 +33,7 @@ vi.mock("../../src/lib/config.js", () => ({
     delete mockStore.email;
   }),
   getConfigValue: vi.fn((key) => mockStore[key]),
+  resolveBaseUrl: vi.fn(() => mockStore.baseUrl || "https://sendly.live"),
   isAuthenticated: vi.fn(() => !!(mockStore.apiKey || mockStore.accessToken)),
   getAuthToken: vi.fn(() => mockStore.apiKey || mockStore.accessToken),
 }));
