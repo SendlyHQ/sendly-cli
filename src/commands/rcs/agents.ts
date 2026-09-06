@@ -10,6 +10,7 @@ import {
   isJsonMode,
   formatRelativeTime,
 } from "../../lib/output.js";
+import { formatStage, type CustomerStage } from "../../lib/rcs-registration.js";
 
 interface RcsAgent {
   id: string;
@@ -17,6 +18,7 @@ interface RcsAgent {
   status: string;
   useCase: string | null;
   sendable: boolean;
+  stage?: CustomerStage;
   createdAt: string;
 }
 
@@ -84,7 +86,7 @@ export default class RcsAgents extends AuthenticatedCommand {
       info("No RCS agents yet");
       console.log(
         colors.dim(
-          "RCS agents are registered for your brand by the Sendly team — contact support@sendly.live to get set up.",
+          `Register one: ${colors.code("sendly rcs brands create ...")} then ${colors.code("sendly rcs agents create --brand <brandId> ...")}; track it with ${colors.code("sendly rcs registration")}.`,
         ),
       );
       return;
@@ -109,6 +111,11 @@ export default class RcsAgents extends AuthenticatedCommand {
         formatter: (v) => (v ? colors.success("yes") : colors.dim("no")),
       },
       {
+        header: "Stage",
+        key: "stage",
+        formatter: (v) => (v ? formatStage(String(v)) : colors.dim("—")),
+      },
+      {
         header: "Created",
         key: "createdAt",
         formatter: (v) => formatRelativeTime(String(v)),
@@ -126,5 +133,11 @@ export default class RcsAgents extends AuthenticatedCommand {
         ),
       );
     }
+    console.log();
+    console.log(
+      colors.dim(
+        `Details and next steps: ${colors.code("sendly rcs agents get <agentId>")} or ${colors.code("sendly rcs registration")}.`,
+      ),
+    );
   }
 }

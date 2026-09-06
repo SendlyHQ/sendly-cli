@@ -391,8 +391,90 @@ Send RCS messages from your brand's verified RCS agent — rich text with
 tappable suggestion chips, or rich cards with images. Recipients whose device
 doesn't support RCS automatically get the text delivered as plain SMS (rich
 cards have no SMS form). Requires a live API key — RCS delivery is never
-simulated on a test key. RCS is rolling out gradually; agents are registered
-for your brand by the Sendly team — contact support@sendly.live to get set up.
+simulated on a test key. RCS is rolling out gradually; once it is enabled for
+your account you register your brand and agent from the CLI (below) — contact
+support@sendly.live for early access.
+
+#### Register Your Brand and Agent
+
+The flow is brand → agent → submit → testing → request launch. Drafts are
+saved as you go; required fields are only checked when you submit. Every
+step is also available in the dashboard, and both see the same registration.
+Registration commands need an API key with the `rcs:read` / `rcs:write`
+scopes (or a `sendly login` session).
+
+Start from what Sendly already knows about your business (your 10DLC brand
+or toll-free verification), then draft the brand:
+
+```bash
+sendly rcs dossier --json > brand.json     # prefilled details; edit as needed
+sendly rcs brands create --from-json brand.json --ein 12-3456789 \
+  --legal-entity-type CORPORATION --organization-type PRIVATE_PROFIT
+# or one field per flag:
+sendly rcs brands create --display-name "Acme" --legal-name "Acme Inc" \
+  --website https://acme.com --address-line1 "1 Main St" --city Austin \
+  --state TX --postal-code 78701 --contact-first-name Jane \
+  --contact-last-name Doe --contact-email jane@acme.com \
+  --contact-phone +15125550100
+sendly rcs brands update <brandId> --stock-symbol NASDAQ:ACME
+```
+
+Draft the agent under the brand. Logo, hero image and any opt-in screenshot
+must already be public `https://` URLs — assets can't be uploaded from the
+CLI (use the dashboard for that):
+
+```bash
+sendly rcs agents create --brand <brandId> --display-name "Acme" \
+  --use-case TRANSACTIONAL --description "Order updates from Acme" \
+  --logo-url https://acme.com/logo.png --hero-url https://acme.com/hero.png \
+  --brand-color "#1E90FF" --privacy-policy-url https://acme.com/privacy \
+  --terms-url https://acme.com/terms --website https://acme.com --website-label Acme
+sendly rcs agents get <agentId>
+```
+
+Submit for review. Sendly checks the brand and agent, then sends them to the
+carrier network; you're emailed when anything changes or needs attention:
+
+```bash
+sendly rcs agents submit <agentId>
+sendly rcs registration        # where things stand, and what to do next
+```
+
+Once the agent is in testing, invite test devices (the list you pass replaces
+the current one), send them a message, and add the campaign details the
+launch review needs:
+
+```bash
+sendly rcs agents devices set <agentId> --phone +13125550100 --phone "+13125550101=Jane's Pixel"
+sendly rcs send --to +13125550100 --text "Hello from testing" --agent <agentId>
+sendly rcs agents update <agentId> \
+  --company-overview "Acme sells widgets online" \
+  --agent-overview "Order and delivery updates" \
+  --interaction TRANSACTIONAL_UPDATES \
+  --message-example "Your Acme order #4821 has shipped. Reply STOP to opt out." \
+  --message-example "Your order is out for delivery today." \
+  --message-example "Delivered! Reply HELP for help." \
+  --opt-in-method "WEBSITE=Checkbox at checkout" \
+  --call-to-action "Get order updates by text" \
+  --call-to-action-url https://acme.com/checkout \
+  --call-to-action-media-url https://acme.com/optin.png \
+  --no-double-opt-in \
+  --opt-in-message "Welcome to Acme updates. Reply STOP to opt out." \
+  --help-response "Acme support: help@acme.com" \
+  --opt-out-response "You are unsubscribed from Acme updates."
+```
+
+Then request launch with a recording or screenshots of the agent on a test
+device:
+
+```bash
+sendly rcs agents request-launch <agentId> --test-url https://acme.com/rcs-test.mp4
+```
+
+`brands create`, `brands update`, `agents create` and `agents update` accept
+`--from-json <file>` for the full nested body (flags override fields in the
+file); every write accepts `--idempotency-key`. Field errors come back as
+`path: message` pairs (and as an `errors` array with `--json`).
 
 #### Send a Message
 

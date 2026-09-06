@@ -82,7 +82,16 @@
         "description": "Connect WhatsApp senders, manage templates and profiles, and send messages"
       },
       "rcs": {
-        "description": "Send RCS messages with rich cards and suggestion chips; list agents and check recipient capability"
+        "description": "Register an RCS agent, send RCS messages with rich cards and suggestion chips, list agents and check recipient capability"
+      },
+      "rcs brands": {
+        "description": "Draft and update the brand behind your RCS registration"
+      },
+      "rcs agents": {
+        "description": "Draft, update, submit and launch your RCS agent"
+      },
+      "rcs agents devices": {
+        "description": "Manage the test devices invited to your RCS agent"
       },
       "10dlc": {
         "description": "10DLC A2P messaging registration — brands, campaigns, number assignment"

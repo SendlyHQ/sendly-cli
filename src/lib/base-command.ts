@@ -3,7 +3,7 @@
  * Provides common functionality and flags
  */
 
-import { Command, Flags } from "@oclif/core";
+import { Command, Errors, Flags } from "@oclif/core";
 import { setOutputFormat, setQuietMode, error } from "./output.js";
 import { isAuthenticated } from "./config.js";
 import {
@@ -42,6 +42,10 @@ export abstract class BaseCommand extends Command {
   }
 
   protected async catch(err: Error): Promise<void> {
+    if (err instanceof Errors.ExitError) {
+      throw err;
+    }
+
     // Every typed branch includes the machine-readable `code` so scripts in
     // JSON mode can branch on it (previously only unclassified ApiErrors did).
     if (err instanceof ApiKeyRequiredError) {

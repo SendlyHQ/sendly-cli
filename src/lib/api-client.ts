@@ -88,8 +88,14 @@ export interface RateLimitInfo {
   reset: number;
 }
 
+export interface ApiFieldError {
+  path: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   public hint?: string;
+  public fieldErrors?: ApiFieldError[];
 
   constructor(
     public code: string,
@@ -388,6 +394,9 @@ class ApiClient {
     const error = data?.error || "unknown_error";
     const message = data?.message || `HTTP ${statusCode}`;
     const details = data?.details;
+    const fieldErrors = Array.isArray(data?.errors)
+      ? (data.errors as ApiFieldError[])
+      : undefined;
 
     switch (statusCode) {
       case 401:
@@ -404,8 +413,11 @@ class ApiClient {
           );
         }
         throw new AuthenticationError(message);
-      case 400:
-        throw new ValidationError(message, details);
+      case 400: {
+        const validation = new ValidationError(message, details);
+        validation.fieldErrors = fieldErrors;
+        throw validation;
+      }
       case 402:
         // A bare 402 can mean either "out of credits" or "no card on file" —
         // they need opposite remedies, so branch on the server error code
@@ -420,12 +432,21 @@ class ApiClient {
       case 429:
         const retryAfter = data?.retryAfter || 60;
         throw new RateLimitError(retryAfter, message);
-      default:
+      default: {
         const defaultHint =
           statusCode >= 500
             ? "This is a server error. Try again later or check https://status.sendly.live"
             : undefined;
-        throw new ApiError(error, message, statusCode, details, defaultHint);
+        const apiError = new ApiError(
+          error,
+          message,
+          statusCode,
+          details,
+          defaultHint,
+        );
+        apiError.fieldErrors = fieldErrors;
+        throw apiError;
+      }
     }
   }
 
@@ -455,16 +476,18 @@ class ApiClient {
     path: string,
     body?: Record<string, unknown>,
     requireAuth: boolean = true,
+    options: { idempotencyKey?: string } = {},
   ): Promise<T> {
-    return this.request<T>("PATCH", path, { body, requireAuth });
+    return this.request<T>("PATCH", path, { body, requireAuth, ...options });
   }
 
   async put<T>(
     path: string,
     body?: Record<string, unknown>,
     requireAuth: boolean = true,
+    options: { idempotencyKey?: string } = {},
   ): Promise<T> {
-    return this.request<T>("PUT", path, { body, requireAuth });
+    return this.request<T>("PUT", path, { body, requireAuth, ...options });
   }
 
   async delete<T>(path: string, requireAuth: boolean = true): Promise<T> {
