@@ -408,7 +408,7 @@ class ApiClient {
           message?.toLowerCase().includes("api key")
         ) {
           throw new ApiKeyRequiredError(
-            "API key required for sending messages",
+            message || "A valid API key is required for this command",
             "Set SENDLY_API_KEY environment variable or create a key with:\n  sendly keys create --type test",
           );
         }
