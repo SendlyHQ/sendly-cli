@@ -29,7 +29,7 @@ export default class ContactsListsRemove extends AuthenticatedCommand {
     const { args } = await this.parse(ContactsListsRemove);
 
     await apiClient.delete(
-      `/api/v1/contact-lists/${args.listId}/contacts/${args.contactId}`,
+      `/api/v1/contact-lists/${encodeURIComponent(args.listId)}/contacts/${encodeURIComponent(args.contactId)}`,
     );
 
     if (isJsonMode()) {

@@ -66,7 +66,7 @@ export default class WorkspacesDelete extends AuthenticatedCommand {
     spin.start();
 
     await apiClient.delete(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}`,
     );
 
     spin.succeed("Workspace deleted");

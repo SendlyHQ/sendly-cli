@@ -52,7 +52,7 @@ export default class CampaignsDelete extends AuthenticatedCommand {
     const { args, flags } = await this.parse(CampaignsDelete);
 
     const campaign = await apiClient.get<Campaign>(
-      `/api/v1/campaigns/${args.id}`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}`,
     );
 
     if (campaign.status === "sending") {
@@ -74,7 +74,7 @@ export default class CampaignsDelete extends AuthenticatedCommand {
       }
     }
 
-    await apiClient.delete(`/api/v1/campaigns/${args.id}`);
+    await apiClient.delete(`/api/v1/campaigns/${encodeURIComponent(args.id)}`);
 
     if (isJsonMode()) {
       json({ deleted: true, id: args.id });

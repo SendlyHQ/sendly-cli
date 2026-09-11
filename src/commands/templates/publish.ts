@@ -46,7 +46,7 @@ export default class TemplatesPublish extends AuthenticatedCommand {
 
     try {
       const response = await apiClient.post<TemplateResponse>(
-        `/api/v1/templates/${args.id}/publish`,
+        `/api/v1/templates/${encodeURIComponent(args.id)}/publish`,
       );
 
       publishSpinner.stop();

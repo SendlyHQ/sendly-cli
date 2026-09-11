@@ -72,7 +72,7 @@ export default class CampaignsSend extends AuthenticatedCommand {
     const { args, flags } = await this.parse(CampaignsSend);
 
     const preview = await apiClient.get<CampaignPreview>(
-      `/api/v1/campaigns/${args.id}/preview`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}/preview`,
     );
 
     if (!preview.hasEnoughCredits) {
@@ -125,7 +125,7 @@ export default class CampaignsSend extends AuthenticatedCommand {
     }
 
     const result = await apiClient.post<BatchResult>(
-      `/api/v1/campaigns/${args.id}/send`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}/send`,
     );
 
     if (isJsonMode()) {

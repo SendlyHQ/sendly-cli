@@ -52,7 +52,7 @@ export default class TendlcQualify extends AuthenticatedCommand {
     const { args } = await this.parse(TendlcQualify);
 
     const response = await apiClient.get<QualifyResponse>(
-      `/api/v1/tendlc/brands/${args.brand}/qualify/${encodeURIComponent(args.usecase)}`,
+      `/api/v1/tendlc/brands/${encodeURIComponent(args.brand)}/qualify/${encodeURIComponent(args.usecase)}`,
     );
 
     if (isJsonMode()) {

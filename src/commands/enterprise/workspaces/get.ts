@@ -53,7 +53,7 @@ export default class WorkspacesGet extends AuthenticatedCommand {
     const { args } = await this.parse(WorkspacesGet);
 
     const workspace = await apiClient.get<WorkspaceDetail>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}`,
     );
 
     if (isJsonMode()) {

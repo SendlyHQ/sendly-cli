@@ -41,7 +41,7 @@ export default class TemplatesClone extends AuthenticatedCommand {
     const { args, flags } = await this.parse(TemplatesClone);
 
     const template = await apiClient.post<Template>(
-      `/api/v1/templates/${args.id}/clone`,
+      `/api/v1/templates/${encodeURIComponent(args.id)}/clone`,
       flags.name ? { name: flags.name } : {},
     );
 

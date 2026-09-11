@@ -53,7 +53,7 @@ export default class EnterpriseKeysCreate extends AuthenticatedCommand {
     const { args, flags } = await this.parse(EnterpriseKeysCreate);
 
     const response = await apiClient.post<CreateKeyResponse>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/keys`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/keys`,
       {
         name: flags.name,
         type: flags.type,

@@ -58,7 +58,7 @@ export default class WebhooksRotateSecret extends AuthenticatedCommand {
         id: string;
         url: string;
         secret_version: number;
-      }>(`/api/v1/webhooks/${args.id}`);
+      }>(`/api/v1/webhooks/${encodeURIComponent(args.id)}`);
     } catch (err) {
       error(`Webhook not found: ${args.id}`);
       this.exit(1);
@@ -94,7 +94,7 @@ export default class WebhooksRotateSecret extends AuthenticatedCommand {
 
     try {
       const result = await apiClient.post<RotateSecretResponse>(
-        `/api/v1/webhooks/${args.id}/rotate-secret`,
+        `/api/v1/webhooks/${encodeURIComponent(args.id)}/rotate-secret`,
       );
 
       if (isJsonMode()) {

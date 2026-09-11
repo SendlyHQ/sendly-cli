@@ -57,7 +57,7 @@ export default class WebhooksTest extends AuthenticatedCommand {
 
     try {
       const result = await apiClient.post<TestWebhookResponse>(
-        `/api/v1/webhooks/${args.id}/test`,
+        `/api/v1/webhooks/${encodeURIComponent(args.id)}/test`,
       );
 
       testSpinner.stop();

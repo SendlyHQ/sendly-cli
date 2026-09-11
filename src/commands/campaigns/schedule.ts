@@ -71,7 +71,7 @@ export default class CampaignsSchedule extends AuthenticatedCommand {
     }
 
     const campaign = await apiClient.post<Campaign>(
-      `/api/v1/campaigns/${args.id}/schedule`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}/schedule`,
       {
         scheduledAt: scheduledAt.toISOString(),
         timezone: flags.timezone,

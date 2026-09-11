@@ -39,7 +39,7 @@ export default class QuotaGet extends AuthenticatedCommand {
     const { args } = await this.parse(QuotaGet);
 
     const quota = await apiClient.get<QuotaSettings>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/quota`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/quota`,
     );
 
     if (isJsonMode()) {

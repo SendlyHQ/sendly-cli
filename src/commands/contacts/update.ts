@@ -50,7 +50,7 @@ export default class ContactsUpdate extends AuthenticatedCommand {
     if (flags.email !== undefined) body.email = flags.email;
 
     const contact = await apiClient.patch<Contact>(
-      `/api/v1/contacts/${args.id}`,
+      `/api/v1/contacts/${encodeURIComponent(args.id)}`,
       body,
     );
 

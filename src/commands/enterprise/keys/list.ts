@@ -47,7 +47,7 @@ export default class EnterpriseKeysList extends AuthenticatedCommand {
     const { args } = await this.parse(EnterpriseKeysList);
 
     const response = await apiClient.get<KeysResponse>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/keys`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/keys`,
     );
 
     if (isJsonMode()) {

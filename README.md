@@ -76,6 +76,21 @@ sendly whoami
 sendly logout
 ```
 
+### When Authentication Is Rejected
+
+A 401 from the API is reported with **the server's own message**. Every key-related 401 used to be rewritten to the fixed string `API key required for sending messages` — accurate on a send, wrong on the many commands that send nothing. A revoked or expired key on `sendly numbers list` told you about sending messages, which sent people looking in the wrong place. You now see what the server actually said:
+
+```
+✗ Invalid or expired API key
+  code: api_key_required
+  hint: Set SENDLY_API_KEY environment variable or create a key with:
+  sendly keys create --type test
+```
+
+On a send command the server's message really is `API key required for sending messages`, so that text still appears where it belongs — it is just no longer substituted everywhere else.
+
+The machine-readable `code` is unchanged, so `--json` consumers that branch on `api_key_required` keep working. A script that matched the literal text `API key required for sending messages` on stderr will no longer match on non-send commands — branch on `code` in `--json` output instead.
+
 ## Commands
 
 ### SMS Commands
@@ -595,12 +610,85 @@ sendly webhooks listen --forward http://localhost:3000/webhook
 
 # Listen for specific events
 sendly webhooks listen --events message.delivered,message.failed
+
+# Lifecycle events only
+sendly webhooks listen --events rcs_agent.live,rcs_agent.rejected,number.activated
 ```
 
 This creates a secure tunnel and displays:
 - Tunnel URL
 - Webhook secret for signature verification
 - Real-time event stream
+
+`--events` defaults to **every event type the API emits**. It used to default to a hand-written subset — `message.*`, `contact.*` / `contacts.*`, `brand.*`, `campaign.*`, `assignment.*`, `port*` and `number.*` — so RCS, WhatsApp, voice, verification, conversation and draft events never reached your local server. Nothing arrived and nothing explained why. Pass `--events` yourself if you want the narrow stream back.
+
+#### Handling Lifecycle Events
+
+`sendly webhooks listen` forwards each event to your local URL **verbatim**: the same JSON body Sendly POSTs to a registered webhook. It never reshapes the payload, so the object you want is always `data.object` in the forwarded request body.
+
+`data.object` is a message only on `message.*` events. Every lifecycle event — `rcs_*`, `whatsapp_*`, `call.*`, `brand.*`, `campaign.*`, `assignment.*`, `number.*`, `port*` — carries a different object, so branch on `type` before you read a field:
+
+```json
+{
+  "id": "5c9f4b2e-1d7a-4a1b-9f3c-8e6d2a0b1c34",
+  "type": "rcs_agent.live",
+  "api_version": "2024-01",
+  "created": 1757246400,
+  "livemode": true,
+  "data": {
+    "object": {
+      "agent_id": "agt_7f2a91c4",
+      "name": "Acme Support",
+      "stage": "live",
+      "organization_id": "org_3b8d15ea"
+    }
+  }
+}
+```
+
+A handler that covers both kinds:
+
+```javascript
+import express from 'express';
+
+const app = express();
+// Keep the raw body — you need the exact bytes to verify the signature.
+app.use('/webhook', express.raw({ type: 'application/json' }));
+
+app.post('/webhook', (req, res) => {
+  const event = JSON.parse(req.body.toString('utf8'));
+  const object = event.data.object; // raw payload, never reshaped
+
+  switch (event.type) {
+    case 'message.delivered':
+      console.log(`message ${object.id} delivered to ${object.to}`);
+      break;
+
+    case 'rcs_agent.live':
+      console.log(`RCS agent ${object.agent_id} (${object.name}) is ${object.stage}`);
+      break;
+
+    case 'contact.auto_flagged':
+      // object.id is the CONTACT id on this event. The message that
+      // triggered the flag is object.message_id.
+      console.log(`contact ${object.id} flagged: ${object.invalid_reason}`);
+      break;
+
+    default:
+      console.log(event.type, object);
+  }
+
+  res.sendStatus(200);
+});
+
+app.listen(3000);
+```
+
+Then point the listener at it:
+
+```bash
+sendly webhooks listen --forward http://localhost:3000/webhook
+```
 
 #### Create Webhook
 
@@ -961,23 +1049,50 @@ Configuration is stored in:
 
 ## Webhook Signature Verification
 
-When using `sendly webhooks listen`, verify signatures in your app:
+`sendly webhooks listen` signs every forwarded request the same way Sendly signs a production delivery, so one handler covers both. On each forwarded request it sets:
+
+| Header | Value |
+| --- | --- |
+| `X-Sendly-Signature` | `sha256=<hex digest>` |
+| `X-Sendly-Timestamp` | Unix seconds |
+| `X-Sendly-Event` | The event type (a production delivery sends this as `X-Sendly-Event-Type` — read `type` from the body to cover both) |
+| `X-Sendly-Event-Id` | The event id |
+
+The signed string is `<timestamp>.<raw request body>`, so verify against the raw bytes before parsing:
 
 ```javascript
 import crypto from 'crypto';
 
-function verifyWebhook(payload, signature, secret) {
-  const expectedSig = 'v1=' + crypto
+function verifyWebhook(rawBody, signature, timestamp, secret) {
+  const expected = 'sha256=' + crypto
     .createHmac('sha256', secret)
-    .update(payload)
+    .update(`${timestamp}.${rawBody}`, 'utf8')
     .digest('hex');
-  
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSig)
-  );
+
+  const a = Buffer.from(signature ?? '');
+  const b = Buffer.from(expected);
+  // timingSafeEqual throws on a length mismatch — check first.
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+
+app.post('/webhook', (req, res) => {
+  const rawBody = req.body.toString('utf8');
+
+  const ok = verifyWebhook(
+    rawBody,
+    req.get('X-Sendly-Signature'),
+    req.get('X-Sendly-Timestamp'),
+    process.env.SENDLY_WEBHOOK_SECRET,
+  );
+  if (!ok) return res.sendStatus(400);
+
+  const event = JSON.parse(rawBody);
+  console.log(event.type, event.data.object);
+  res.sendStatus(200);
+});
 ```
+
+`sendly webhooks listen` prints the secret to use when it starts. For a registered webhook, mint one with `sendly webhooks rotate-secret <id>`.
 
 ## Requirements
 

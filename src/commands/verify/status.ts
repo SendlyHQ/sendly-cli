@@ -49,7 +49,7 @@ export default class VerifyStatus extends AuthenticatedCommand {
 
     try {
       const response = await apiClient.get<StatusResponse>(
-        `/api/v1/verify/${args.id}`,
+        `/api/v1/verify/${encodeURIComponent(args.id)}`,
       );
 
       statusSpinner.stop();

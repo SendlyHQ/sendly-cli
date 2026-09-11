@@ -47,7 +47,7 @@ export default class ContactsListsDelete extends AuthenticatedCommand {
       }
     }
 
-    await apiClient.delete(`/api/v1/contact-lists/${args.id}`);
+    await apiClient.delete(`/api/v1/contact-lists/${encodeURIComponent(args.id)}`);
 
     if (isJsonMode()) {
       json({ success: true, deletedId: args.id });

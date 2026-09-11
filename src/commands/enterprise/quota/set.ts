@@ -63,7 +63,7 @@ export default class QuotaSet extends AuthenticatedCommand {
     }
 
     const quota = await apiClient.put<QuotaSettings>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/quota`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/quota`,
       body,
     );
 

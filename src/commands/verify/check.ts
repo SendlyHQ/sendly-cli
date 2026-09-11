@@ -53,7 +53,7 @@ export default class VerifyCheck extends AuthenticatedCommand {
 
     try {
       const response = await apiClient.post<CheckResponse>(
-        `/api/v1/verify/${args.id}/check`,
+        `/api/v1/verify/${encodeURIComponent(args.id)}/check`,
         { code: flags.code },
       );
 

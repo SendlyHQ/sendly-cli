@@ -31,7 +31,7 @@ export default class ContactsMarkValid extends AuthenticatedCommand {
       phone_number?: string;
       invalidReason?: string | null;
       invalid_reason?: string | null;
-    }>(`/api/contacts/${args.id}/mark-valid`);
+    }>(`/api/contacts/${encodeURIComponent(args.id)}/mark-valid`);
 
     if (isJsonMode()) {
       json(contact);

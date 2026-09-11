@@ -72,7 +72,7 @@ export default class WebhooksDeliveries extends AuthenticatedCommand {
     });
 
     const response = await apiClient.get<DeliveriesResponse>(
-      `/api/v1/webhooks/${args.id}/deliveries?${params.toString()}`,
+      `/api/v1/webhooks/${encodeURIComponent(args.id)}/deliveries?${params.toString()}`,
     );
 
     const deliveries = response.deliveries || [];

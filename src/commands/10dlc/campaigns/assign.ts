@@ -63,7 +63,7 @@ export default class TendlcCampaignsAssign extends AuthenticatedCommand {
     const { args, flags } = await this.parse(TendlcCampaignsAssign);
 
     const response = await apiClient.post<AssignResponse>(
-      `/api/v1/tendlc/campaigns/${args.id}/assign`,
+      `/api/v1/tendlc/campaigns/${encodeURIComponent(args.id)}/assign`,
       { phoneNumber: flags.number },
     );
 

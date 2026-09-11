@@ -52,7 +52,7 @@ export default class TendlcBrandsGet extends AuthenticatedCommand {
     const { args } = await this.parse(TendlcBrandsGet);
 
     const response = await apiClient.get<GetBrandResponse>(
-      `/api/v1/tendlc/brands/${args.id}`,
+      `/api/v1/tendlc/brands/${encodeURIComponent(args.id)}`,
     );
 
     if (isJsonMode()) {

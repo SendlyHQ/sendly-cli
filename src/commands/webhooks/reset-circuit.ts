@@ -35,7 +35,7 @@ export default class WebhooksResetCircuit extends AuthenticatedCommand {
 
     try {
       const result = await apiClient.post<ResetCircuitResponse>(
-        `/api/v1/webhooks/${args.id}/reset-circuit`,
+        `/api/v1/webhooks/${encodeURIComponent(args.id)}/reset-circuit`,
       );
 
       sp.stop();

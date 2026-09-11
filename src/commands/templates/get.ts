@@ -47,7 +47,7 @@ export default class TemplatesGet extends AuthenticatedCommand {
 
     try {
       const response = await apiClient.get<TemplateResponse>(
-        `/api/v1/templates/${args.id}`,
+        `/api/v1/templates/${encodeURIComponent(args.id)}`,
       );
 
       getSpinner.stop();

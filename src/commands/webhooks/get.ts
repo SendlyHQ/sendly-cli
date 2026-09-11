@@ -49,7 +49,7 @@ export default class WebhooksGet extends AuthenticatedCommand {
   async run(): Promise<void> {
     const { args } = await this.parse(WebhooksGet);
 
-    const webhook = await apiClient.get<Webhook>(`/api/v1/webhooks/${args.id}`);
+    const webhook = await apiClient.get<Webhook>(`/api/v1/webhooks/${encodeURIComponent(args.id)}`);
 
     if (isJsonMode()) {
       json(webhook);

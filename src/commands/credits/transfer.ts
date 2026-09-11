@@ -156,7 +156,7 @@ export default class CreditsTransfer extends AuthenticatedCommand {
     spin.start();
 
     const result = await apiClient.post<TransferResponse>(
-      `/api/organizations/${currentOrg.id}/transfer-credits`,
+      `/api/organizations/${encodeURIComponent(currentOrg.id)}/transfer-credits`,
       {
         targetOrganizationId: targetOrgId,
         amount,

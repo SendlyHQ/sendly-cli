@@ -49,7 +49,7 @@ export default class TeamsInvite extends AuthenticatedCommand {
     }
 
     const response = await apiClient.post<InvitationResponse>(
-      `/api/organizations/${org.id}/invitations`,
+      `/api/organizations/${encodeURIComponent(org.id)}/invitations`,
       {
         email: args.email,
         role: flags.role,

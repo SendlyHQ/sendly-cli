@@ -66,7 +66,7 @@ export default class CampaignsUpdate extends AuthenticatedCommand {
     if (flags.template !== undefined) body.templateId = flags.template;
 
     const campaign = await apiClient.patch<Campaign>(
-      `/api/v1/campaigns/${args.id}`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}`,
       body,
     );
 

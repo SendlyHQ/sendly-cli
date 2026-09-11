@@ -66,7 +66,7 @@ export default class CampaignsGet extends AuthenticatedCommand {
     const { args } = await this.parse(CampaignsGet);
 
     const campaign = await apiClient.get<Campaign>(
-      `/api/v1/campaigns/${args.id}`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}`,
     );
 
     if (isJsonMode()) {

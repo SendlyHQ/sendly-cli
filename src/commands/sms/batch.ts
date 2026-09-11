@@ -281,7 +281,7 @@ export default class SmsBatch extends AuthenticatedCommand {
 
     try {
       const response = await apiClient.get<BatchUploadResponse>(
-        `/api/cli/batch/reuse/${uploadId}`,
+        `/api/cli/batch/reuse/${encodeURIComponent(uploadId)}`,
       );
 
       spin.stop();

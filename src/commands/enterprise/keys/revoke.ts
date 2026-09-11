@@ -52,7 +52,7 @@ export default class EnterpriseKeysRevoke extends AuthenticatedCommand {
     }
 
     await apiClient.delete(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/keys/${args.keyId}`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/keys/${encodeURIComponent(args.keyId)}`,
     );
 
     if (isJsonMode()) {

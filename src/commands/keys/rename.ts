@@ -35,7 +35,7 @@ export default class KeysRename extends AuthenticatedCommand {
         id: string;
         name: string;
         createdAt: string;
-      }>(`/api/v1/account/keys/${args.keyId}/rename`, {
+      }>(`/api/v1/account/keys/${encodeURIComponent(args.keyId)}/rename`, {
         name: flags.name,
       });
 

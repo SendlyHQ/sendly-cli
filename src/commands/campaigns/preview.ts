@@ -45,7 +45,7 @@ export default class CampaignsPreview extends AuthenticatedCommand {
     const { args } = await this.parse(CampaignsPreview);
 
     const preview = await apiClient.get<CampaignPreview>(
-      `/api/v1/campaigns/${args.id}/preview`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}/preview`,
     );
 
     if (isJsonMode()) {

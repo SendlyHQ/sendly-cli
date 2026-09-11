@@ -1,5 +1,35 @@
 # @sendly/cli
 
+## 4.0.0
+
+### Major Changes
+
+- The CLI now shares one version with every Sendly SDK and the MCP server. No command, flag or output changed.
+
+### Security
+
+- **Ids are percent-encoded before they reach the request path.** An id containing `/`, `?` or `#`, whether typed or piped in from another tool, used to change which endpoint the CLI called: `../../account/keys` left its collection and hit another endpoint with your API key. Ordinary ids are sent unchanged.
+
+## 3.40.0
+
+### Minor Changes
+
+- **`sendly webhooks listen` now subscribes to every event type by default.** The default for `--events` was a hand-written list of 27 event names that had not been updated in a long time. It covered `message.*`, `contact.*` / `contacts.*`, `brand.*`, `campaign.*`, `assignment.*`, `port*` and `number.*`, and nothing else — so RCS (`rcs_brand.*`, `rcs_agent.*`), WhatsApp (`whatsapp_account.*`, `whatsapp_template.*`), voice (`call.*`), verification (`verification.*`), `conversation.*` and `draft.*` events were dropped in local development. There was no error and no warning; you ran the listener, triggered the event, and watched nothing arrive. The default is now generated from the server's own event list, so it always covers everything the API can emit. Pass `--events` explicitly if you want the narrow stream back.
+- **Lifecycle webhook payloads are documented, and were always reachable.** The listener forwards each event to your local URL verbatim — the same JSON body Sendly POSTs to a registered webhook — so the payload is `data.object` in the forwarded request body and the CLI never reshapes it. What was missing was the documentation: the README showed only `message.*` handling, and `data.object` is a message on `message.*` events *only*. Every lifecycle event carries a different object, so a handler must branch on `type` before reading a field. The README now shows a runnable handler that does. Note in particular that on `contact.auto_flagged` the object's `id` is the **contact** id, not a message id — the message that triggered the flag is `message_id`.
+- **A 401 now shows the server's message instead of a fixed string about sending.** Any 401 whose body mentioned an API key was rewritten to `API key required for sending messages` — accurate on a send, wrong on the many commands that send nothing. A revoked or expired key on `sendly numbers list` reported a problem with sending messages, which sent people looking in the wrong place; the server had in fact said `Invalid or expired API key`. You now see what the server actually said, with the same hint about `SENDLY_API_KEY` attached. On a send the server's own message is still `API key required for sending messages`, so that text appears where it belongs — it is simply no longer substituted everywhere else.
+
+### Notes for upgraders
+
+Nothing here is a breaking change, but two things are visible enough to mention.
+
+- If you run `sendly webhooks listen` without `--events`, your local endpoint will now receive event types it has never seen — RCS, WhatsApp, voice, verification, conversation and draft events, if your workspace emits them. A handler with an exhaustive `switch` and no `default`, or one that assumes `data.object` is always a message, will now meet payloads it was never written for. That is the bug this release exists to expose, but it does surface on upgrade rather than at the moment you subscribe.
+- The 401 text changed on every command that is not a send. The machine-readable error code is unchanged (`api_key_required`, still in `--json` output), so anything branching on that is unaffected. A script matching the literal string `API key required for sending messages` on stderr will stop matching outside of sends; branch on the code instead.
+
+### Patch Changes
+
+- The webhook event list now lives in `src/lib/webhook-events.ts`, generated from the server's `shared/webhook-types.ts`. A parity check runs in CI and fails the build if the two drift, so the default cannot silently go stale again.
+- README: the webhook signature example was wrong. It computed `v1=` + HMAC of the body alone, whereas both the listener and a production delivery send `sha256=` + HMAC of `<timestamp>.<raw body>`, so anyone who copied it rejected every genuine webhook. The corrected example verifies against the raw bytes, reads the timestamp header, and length-checks before `timingSafeEqual` (which throws on a length mismatch). The forwarded headers are now listed too, including that the listener sends the event type as `X-Sendly-Event` while a production delivery sends `X-Sendly-Event-Type` — read `type` from the body to cover both.
+
 ## 3.38.0
 
 ### Minor Changes

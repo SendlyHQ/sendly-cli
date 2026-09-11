@@ -49,7 +49,7 @@ export default class ContactsListsUpdate extends AuthenticatedCommand {
     if (flags.description !== undefined) body.description = flags.description;
 
     const list = await apiClient.patch<ContactList>(
-      `/api/v1/contact-lists/${args.id}`,
+      `/api/v1/contact-lists/${encodeURIComponent(args.id)}`,
       body,
     );
 

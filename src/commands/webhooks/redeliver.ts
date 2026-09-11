@@ -74,7 +74,7 @@ export default class WebhooksRedeliver extends AuthenticatedCommand {
 
     try {
       const result = await apiClient.post<RedeliverResponse>(
-        `/api/v1/webhooks/${args.id}/redeliver`,
+        `/api/v1/webhooks/${encodeURIComponent(args.id)}/redeliver`,
         body,
       );
 

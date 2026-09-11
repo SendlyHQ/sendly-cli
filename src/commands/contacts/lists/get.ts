@@ -47,7 +47,7 @@ export default class ContactsListsGet extends AuthenticatedCommand {
     const { args } = await this.parse(ContactsListsGet);
 
     const list = await apiClient.get<ContactListDetail>(
-      `/api/v1/contact-lists/${args.id}`,
+      `/api/v1/contact-lists/${encodeURIComponent(args.id)}`,
       { includeContacts: "true", limit: "10" },
     );
 

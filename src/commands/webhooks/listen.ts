@@ -299,7 +299,7 @@ export default class WebhooksListen extends AuthenticatedCommand {
 
     if (this.sessionId) {
       try {
-        await apiClient.delete(`/api/cli/listen/stop/${this.sessionId}`);
+        await apiClient.delete(`/api/cli/listen/stop/${encodeURIComponent(this.sessionId)}`);
       } catch {
         // Ignore cleanup errors
       }

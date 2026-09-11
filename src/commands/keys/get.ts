@@ -45,7 +45,7 @@ export default class KeysGet extends AuthenticatedCommand {
     const { args } = await this.parse(KeysGet);
 
     const response = await apiClient.get<ApiKeyResponse>(
-      `/api/v1/account/keys/${args.id}`,
+      `/api/v1/account/keys/${encodeURIComponent(args.id)}`,
     );
 
     if (isJsonMode()) {

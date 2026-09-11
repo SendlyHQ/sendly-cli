@@ -57,7 +57,7 @@ export default class TemplatesDelete extends AuthenticatedCommand {
     }
 
     try {
-      await apiClient.delete(`/api/v1/templates/${args.id}`);
+      await apiClient.delete(`/api/v1/templates/${encodeURIComponent(args.id)}`);
 
       deleteSpinner.stop();
 

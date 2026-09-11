@@ -38,7 +38,7 @@ export default class ContactsGet extends AuthenticatedCommand {
     const { args } = await this.parse(ContactsGet);
 
     const contact = await apiClient.get<Contact>(
-      `/api/v1/contacts/${args.id}`,
+      `/api/v1/contacts/${encodeURIComponent(args.id)}`,
     );
 
     if (isJsonMode()) {

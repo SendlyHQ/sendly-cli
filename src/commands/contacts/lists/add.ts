@@ -41,7 +41,7 @@ export default class ContactsListsAdd extends AuthenticatedCommand {
     );
 
     const response = await apiClient.post<AddContactsResponse>(
-      `/api/v1/contact-lists/${args.listId}/contacts`,
+      `/api/v1/contact-lists/${encodeURIComponent(args.listId)}/contacts`,
       { contact_ids: contactIds },
     );
 

@@ -43,7 +43,7 @@ export default class CampaignsClone extends AuthenticatedCommand {
     if (flags.name) body.name = flags.name;
 
     const campaign = await apiClient.post<Campaign>(
-      `/api/v1/campaigns/${args.id}/clone`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}/clone`,
       body,
     );
 

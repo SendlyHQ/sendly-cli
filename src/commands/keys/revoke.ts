@@ -55,7 +55,7 @@ export default class KeysRevoke extends AuthenticatedCommand {
 
     // Revoke the key directly by ID
     try {
-      await apiClient.patch(`/api/v1/account/keys/${args.keyId}/revoke`, {
+      await apiClient.patch(`/api/v1/account/keys/${encodeURIComponent(args.keyId)}/revoke`, {
         reason: flags.reason || "Revoked via CLI",
       });
     } catch (err: any) {

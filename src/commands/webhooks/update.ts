@@ -104,7 +104,7 @@ export default class WebhooksUpdate extends AuthenticatedCommand {
 
     try {
       const webhook = await apiClient.patch<UpdateWebhookResponse>(
-        `/api/v1/webhooks/${args.id}`,
+        `/api/v1/webhooks/${encodeURIComponent(args.id)}`,
         updateData,
       );
 

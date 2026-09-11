@@ -50,7 +50,7 @@ export default class VerifyResend extends AuthenticatedCommand {
 
     try {
       const response = await apiClient.post<ResendResponse>(
-        `/api/v1/verify/${args.id}/resend`,
+        `/api/v1/verify/${encodeURIComponent(args.id)}/resend`,
         {},
       );
 

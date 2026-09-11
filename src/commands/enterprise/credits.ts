@@ -39,7 +39,7 @@ export default class EnterpriseCredits extends AuthenticatedCommand {
     const { args } = await this.parse(EnterpriseCredits);
 
     const credits = await apiClient.get<WorkspaceCredits>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/credits`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/credits`,
     );
 
     if (isJsonMode()) {

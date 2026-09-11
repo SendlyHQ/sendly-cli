@@ -65,7 +65,7 @@ export default class TendlcCampaignsGet extends AuthenticatedCommand {
     const { args } = await this.parse(TendlcCampaignsGet);
 
     const response = await apiClient.get<GetCampaignResponse>(
-      `/api/v1/tendlc/campaigns/${args.id}`,
+      `/api/v1/tendlc/campaigns/${encodeURIComponent(args.id)}`,
     );
 
     if (isJsonMode()) {

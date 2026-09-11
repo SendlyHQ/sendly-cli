@@ -66,7 +66,7 @@ export default class WebhooksBackfill extends AuthenticatedCommand {
 
     try {
       const result = await apiClient.post<BackfillResponse>(
-        `/api/v1/webhooks/${args.id}/backfill`,
+        `/api/v1/webhooks/${encodeURIComponent(args.id)}/backfill`,
         body,
       );
 

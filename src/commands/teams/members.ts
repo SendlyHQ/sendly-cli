@@ -40,7 +40,7 @@ export default class TeamsMembers extends AuthenticatedCommand {
     }
 
     const members = await apiClient.get<Member[]>(
-      `/api/organizations/${org.id}/members`,
+      `/api/organizations/${encodeURIComponent(org.id)}/members`,
     );
 
     if (isJsonMode()) {

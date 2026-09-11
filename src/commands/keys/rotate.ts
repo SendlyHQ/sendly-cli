@@ -80,7 +80,7 @@ export default class KeysRotate extends AuthenticatedCommand {
       }
 
       const response = await apiClient.post<RotateResponse>(
-        `/api/v1/account/keys/${args.keyId}/rotate`,
+        `/api/v1/account/keys/${encodeURIComponent(args.keyId)}/rotate`,
         body,
       );
 

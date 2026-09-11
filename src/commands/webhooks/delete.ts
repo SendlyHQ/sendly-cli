@@ -35,7 +35,7 @@ export default class WebhooksDelete extends AuthenticatedCommand {
     // Get webhook details for confirmation
     let webhook;
     try {
-      webhook = await apiClient.get<{ id: string; url: string }>(`/api/v1/webhooks/${args.id}`);
+      webhook = await apiClient.get<{ id: string; url: string }>(`/api/v1/webhooks/${encodeURIComponent(args.id)}`);
     } catch (err) {
       error(`Webhook not found: ${args.id}`);
       this.exit(1);
@@ -58,7 +58,7 @@ export default class WebhooksDelete extends AuthenticatedCommand {
       }
     }
 
-    await apiClient.delete(`/api/v1/webhooks/${args.id}`);
+    await apiClient.delete(`/api/v1/webhooks/${encodeURIComponent(args.id)}`);
 
     if (isJsonMode()) {
       json({ success: true, webhookId: args.id, deleted: true });

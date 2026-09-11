@@ -31,7 +31,7 @@ export default class CampaignsCancel extends AuthenticatedCommand {
     const { args } = await this.parse(CampaignsCancel);
 
     const campaign = await apiClient.post<Campaign>(
-      `/api/v1/campaigns/${args.id}/cancel`,
+      `/api/v1/campaigns/${encodeURIComponent(args.id)}/cancel`,
     );
 
     if (isJsonMode()) {

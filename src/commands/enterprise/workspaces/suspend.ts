@@ -61,7 +61,7 @@ export default class WorkspacesSuspend extends AuthenticatedCommand {
     spin.start();
 
     const response = await apiClient.post<SuspendResponse>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/suspend`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/suspend`,
       flags.reason ? { reason: flags.reason } : undefined,
     );
 

@@ -34,7 +34,7 @@ export default class WorkspacesResume extends AuthenticatedCommand {
     spin.start();
 
     const response = await apiClient.post<ResumeResponse>(
-      `/api/v1/enterprise/workspaces/${args.workspaceId}/resume`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/resume`,
     );
 
     spin.succeed("Workspace resumed");

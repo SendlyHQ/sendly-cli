@@ -47,7 +47,7 @@ export default class Trigger extends AuthenticatedCommand {
 
     try {
       const response = await apiClient.post<{ success: boolean; message: string }>(
-        `/api/cli/trigger/${eventType}`,
+        `/api/cli/trigger/${encodeURIComponent(eventType)}`,
         {},
       );
 
