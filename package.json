@@ -93,6 +93,9 @@
       "rcs agents devices": {
         "description": "Manage the test devices invited to your RCS agent"
       },
+      "short-codes": {
+        "description": "Apply for a US short code and track the application through review, the carrier forms, and certification"
+      },
       "10dlc": {
         "description": "10DLC A2P messaging registration — brands, campaigns, number assignment"
       },
