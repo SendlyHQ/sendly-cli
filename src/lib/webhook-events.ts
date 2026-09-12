@@ -56,6 +56,10 @@ export const WEBHOOK_EVENT_TYPES = [
   "call.started",
   "call.completed",
   "call.recording.ready",
+  "short_code.action_required",
+  "short_code.rejected",
+  "short_code.filed",
+  "short_code.live",
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
