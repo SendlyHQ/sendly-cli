@@ -96,6 +96,9 @@
       "short-codes": {
         "description": "Apply for a US short code and track the application through review, the carrier forms, and certification"
       },
+      "calls": {
+        "description": "Place, list, inspect and end phone calls handled by your AI agents"
+      },
       "10dlc": {
         "description": "10DLC A2P messaging registration — brands, campaigns, number assignment"
       },

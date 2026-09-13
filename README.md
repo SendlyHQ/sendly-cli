@@ -533,6 +533,82 @@ Capability checks reach the carrier network, so they require a live API key:
 sendly rcs capability --to "+15125550190"
 ```
 
+### Calls Commands
+
+Place and manage phone calls handled by your AI agents. `calls list`,
+`calls get` and `calls recording` work with any API key that has the
+`calls:read` scope (test keys included) or a `sendly login` session. Placing
+and ending calls (`calls create`, `calls hangup`) needs a live API key with
+`calls:write`, a US or Canadian number that has voice switched on in the
+dashboard (Calls → Settings) and a registered emergency address for that
+number. Voice is being enabled workspace by workspace; until it is on for
+yours these commands return `voice_not_enabled`.
+
+Calls are prepaid from your credit balance per started minute: outbound calls
+cost 2 credits a minute plus 8 credits a minute for the AI agent, so an
+agent-handled outbound call is 10 credits ($0.10) a minute. Unanswered calls
+cost nothing.
+
+#### Place a Call
+
+The agent talks on the call; you pass its id (shown in the dashboard under
+Calls → Agents). `--context` gives the agent extra instructions for this call
+only, and `--metadata` attaches key=value pairs that come back on every read
+and in every `call.*` webhook:
+
+```bash
+sendly calls create --to +15555550123 --agent <agentId>
+
+# Choose the number to call from when you have more than one
+sendly calls create --to +15555550123 --agent <agentId> --from +15555550188 \
+  --context "Confirm the 3pm appointment on Tuesday" \
+  --metadata crmId=lead_8812 --metadata source=cli
+```
+
+A `402 insufficient_credits` answer means the balance does not cover one
+minute at the agent rate (check it with `sendly credits`); `428 e911_required`
+means the `--from` number has no emergency address yet; `409 lines_busy` means
+every line in the workspace is in use, so retry in a moment.
+
+#### List Calls
+
+Newest first, with direction, status, numbers, duration and credits:
+
+```bash
+sendly calls list
+
+# Filter and paginate
+sendly calls list --status active
+sendly calls list --direction outbound --agent <agentId> --limit 20 --offset 20
+```
+
+#### Inspect a Call
+
+Shows the hangup reason, recording status and metadata. Agent-handled calls
+print the transcript below the details:
+
+```bash
+sendly calls get <callId>
+```
+
+#### End a Call
+
+A ringing call is cancelled, an active call is completed, and a call that has
+already ended is returned unchanged:
+
+```bash
+sendly calls hangup <callId>
+```
+
+#### Download a Recording
+
+Prints the recording status and, once it is ready, a signed download URL that
+is valid for 5 minutes (Ogg/Opus; agent calls are dual-channel):
+
+```bash
+sendly calls recording <callId>
+```
+
 ### API Key Commands
 
 #### List API Keys
