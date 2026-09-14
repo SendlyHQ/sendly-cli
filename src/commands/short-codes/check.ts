@@ -31,7 +31,7 @@ export default class ShortCodesCheck extends AuthenticatedCommand {
     let result: Preflight;
     try {
       result = await apiClient.post<Preflight>(
-        "/short_codes/application/preflight",
+        "/api/v1/short_codes/application/preflight",
         {},
       );
       checkSpinner.stop();

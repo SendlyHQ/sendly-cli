@@ -1,5 +1,12 @@
 # @sendly/cli
 
+## 4.1.0
+
+### Minor Changes
+
+- Added `sendly short-codes application`, `update`, `check`, `submit` and `list` for applying for a US short code from the terminal. `update` covers every field the application asks for, including a separate sending company (`--no-content-provider-same-as-brand` with its legal name, EIN and contact) and a repeatable `--sample-message`.
+- Added `sendly calls create`, `list`, `get`, `hangup` and `recording` for the Voice Calls API.
+
 ## 4.0.0
 
 ### Major Changes

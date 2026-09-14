@@ -30,7 +30,7 @@ export default class ShortCodesSubmit extends AuthenticatedCommand {
     let result: SubmitResponse;
     try {
       result = await apiClient.post<SubmitResponse>(
-        "/short_codes/application/submit",
+        "/api/v1/short_codes/application/submit",
         {},
       );
       submitSpinner.stop();

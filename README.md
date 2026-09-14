@@ -609,6 +609,36 @@ is valid for 5 minutes (Ogg/Opus; agent calls are dual-channel):
 sendly calls recording <callId>
 ```
 
+### Short Code Commands
+
+Apply for a US short code, a 5 or 6 digit sender, from the terminal. A short code is granted rather than bought: you fill in the application, Sendly reviews it, the carrier forms are signed, and each carrier certifies the code. Short codes must be enabled for your account, and the commands need an API key with the `short_codes:read` / `short_codes:write` scopes (or a `sendly login` session).
+
+```bash
+# Where the application stands, what is missing, and the quoted lease
+sendly short-codes application
+
+# Save answers (the first run creates the application)
+sendly short-codes update \
+  --use-case "Delivery alerts for Acme orders" \
+  --message-frequency "4 messages per month" \
+  --brand-contact-name "Ada Lovelace" --brand-contact-email ada@acme.example
+
+# A different company sends the messages
+sendly short-codes update --no-content-provider-same-as-brand \
+  --content-provider-legal-name "Relay Messaging LLC" --content-provider-ein 12-3456789 \
+  --content-provider-contact-name "Grace Hopper" --content-provider-contact-email grace@relay.example
+
+# Example messages (repeat the flag)
+sendly short-codes update --sample-message "Acme: your order shipped." --sample-message "Acme: your order arrived."
+
+# Check against the carrier rules, then submit for review
+sendly short-codes check
+sendly short-codes submit
+
+# Codes leased to the workspace
+sendly short-codes list
+```
+
 ### API Key Commands
 
 #### List API Keys

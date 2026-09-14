@@ -76,7 +76,7 @@ export default class ShortCodesApplication extends AuthenticatedCommand {
     let view: ApplicationView;
     try {
       view = await apiClient.get<ApplicationView>(
-        "/short_codes/application",
+        "/api/v1/short_codes/application",
       );
       loadSpinner.stop();
     } catch (error) {
