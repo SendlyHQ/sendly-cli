@@ -28,7 +28,7 @@ export default class RcsBrandsUpdate extends AuthenticatedCommand {
     "Update fields on a drafted RCS brand (only the flags you pass change; pass an empty value to clear an optional field)";
 
   static examples = [
-    "<%= config.bin %> rcs brands update 3f6a1c9e-0000-0000-0000-000000000000 --ein 12-3456789 --website https://acme.com",
+    "<%= config.bin %> rcs brands update 3f6a1c9e-0000-0000-0000-000000000000 --ein 12-3456789 --website https://acme.example",
     '<%= config.bin %> rcs brands update 3f6a1c9e-0000-0000-0000-000000000000 --stock-symbol ""',
     "<%= config.bin %> rcs brands update 3f6a1c9e-0000-0000-0000-000000000000 --from-json brand.json --json",
   ];

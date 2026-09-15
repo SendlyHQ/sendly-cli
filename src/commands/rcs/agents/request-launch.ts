@@ -29,8 +29,8 @@ export default class RcsAgentsRequestLaunch extends AuthenticatedCommand {
     "Request launch once testing is done — Sendly reviews the campaign details, then sends the launch to the carrier network";
 
   static examples = [
-    "<%= config.bin %> rcs agents request-launch 3f6a1c9e-0000-0000-0000-000000000000 --test-url https://acme.com/rcs-test-recording.mp4",
-    '<%= config.bin %> rcs agents request-launch 3f6a1c9e-0000-0000-0000-000000000000 --test-url https://acme.com/rcs-test.png --testing-info "Tested on two Pixel devices" --json',
+    "<%= config.bin %> rcs agents request-launch 3f6a1c9e-0000-0000-0000-000000000000 --test-url https://acme.example/rcs-test-recording.mp4",
+    '<%= config.bin %> rcs agents request-launch 3f6a1c9e-0000-0000-0000-000000000000 --test-url https://acme.example/rcs-test.png --testing-info "Tested on two Pixel devices" --json',
   ];
 
   static args = {

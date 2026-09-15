@@ -31,7 +31,7 @@ export default class RcsAgentsCreate extends AuthenticatedCommand {
     "Draft the RCS agent for a brand (step 2; logo, hero, and call-to-action media must already be public https:// URLs)";
 
   static examples = [
-    '<%= config.bin %> rcs agents create --brand 3f6a1c9e-0000-0000-0000-000000000000 --display-name "Acme" --use-case TRANSACTIONAL --description "Order updates from Acme" --logo-url https://acme.com/logo.png --hero-url https://acme.com/hero.png --brand-color "#1E90FF" --privacy-policy-url https://acme.com/privacy --terms-url https://acme.com/terms --website https://acme.com --website-label "Acme"',
+    '<%= config.bin %> rcs agents create --brand 3f6a1c9e-0000-0000-0000-000000000000 --display-name "Acme" --use-case TRANSACTIONAL --description "Order updates from Acme" --logo-url https://acme.example/logo.png --hero-url https://acme.example/hero.png --brand-color "#1E90FF" --privacy-policy-url https://acme.example/privacy --terms-url https://acme.example/terms --website https://acme.example --website-label "Acme"',
     "<%= config.bin %> rcs agents create --brand 3f6a1c9e-0000-0000-0000-000000000000 --from-json agent.json",
     "<%= config.bin %> rcs agents create --from-json agent.json --json",
   ];

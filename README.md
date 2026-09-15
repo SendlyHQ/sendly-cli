@@ -427,9 +427,9 @@ sendly rcs brands create --from-json brand.json --ein 12-3456789 \
   --legal-entity-type CORPORATION --organization-type PRIVATE_PROFIT
 # or one field per flag:
 sendly rcs brands create --display-name "Acme" --legal-name "Acme Inc" \
-  --website https://acme.com --address-line1 "1 Main St" --city Austin \
+  --website https://acme.example --address-line1 "1 Main St" --city Austin \
   --state TX --postal-code 78701 --contact-first-name Jane \
-  --contact-last-name Doe --contact-email jane@acme.com \
+  --contact-last-name Doe --contact-email jane@acme.example \
   --contact-phone +15125550100
 sendly rcs brands update <brandId> --stock-symbol NASDAQ:ACME
 ```
@@ -441,9 +441,9 @@ CLI (use the dashboard for that):
 ```bash
 sendly rcs agents create --brand <brandId> --display-name "Acme" \
   --use-case TRANSACTIONAL --description "Order updates from Acme" \
-  --logo-url https://acme.com/logo.png --hero-url https://acme.com/hero.png \
-  --brand-color "#1E90FF" --privacy-policy-url https://acme.com/privacy \
-  --terms-url https://acme.com/terms --website https://acme.com --website-label Acme
+  --logo-url https://acme.example/logo.png --hero-url https://acme.example/hero.png \
+  --brand-color "#1E90FF" --privacy-policy-url https://acme.example/privacy \
+  --terms-url https://acme.example/terms --website https://acme.example --website-label Acme
 sendly rcs agents get <agentId>
 ```
 
@@ -471,11 +471,11 @@ sendly rcs agents update <agentId> \
   --message-example "Delivered! Reply HELP for help." \
   --opt-in-method "WEBSITE=Checkbox at checkout" \
   --call-to-action "Get order updates by text" \
-  --call-to-action-url https://acme.com/checkout \
-  --call-to-action-media-url https://acme.com/optin.png \
+  --call-to-action-url https://acme.example/checkout \
+  --call-to-action-media-url https://acme.example/optin.png \
   --no-double-opt-in \
   --opt-in-message "Welcome to Acme updates. Reply STOP to opt out." \
-  --help-response "Acme support: help@acme.com" \
+  --help-response "Acme support: help@acme.example" \
   --opt-out-response "You are unsubscribed from Acme updates."
 ```
 
@@ -483,7 +483,7 @@ Then request launch with a recording or screenshots of the agent on a test
 device:
 
 ```bash
-sendly rcs agents request-launch <agentId> --test-url https://acme.com/rcs-test.mp4
+sendly rcs agents request-launch <agentId> --test-url https://acme.example/rcs-test.mp4
 ```
 
 `brands create`, `brands update`, `agents create` and `agents update` accept

@@ -30,7 +30,7 @@ export default class RcsBrandsCreate extends AuthenticatedCommand {
     "Draft the brand behind your RCS registration (step 1; nothing goes for review until `rcs agents submit`)";
 
   static examples = [
-    '<%= config.bin %> rcs brands create --display-name "Acme" --legal-name "Acme Inc" --legal-entity-type CORPORATION --organization-type PRIVATE_PROFIT --ein 12-3456789 --website https://acme.com --address-line1 "1 Main St" --city Austin --state TX --postal-code 78701 --contact-first-name Jane --contact-last-name Doe --contact-email jane@acme.com --contact-phone +15125550100',
+    '<%= config.bin %> rcs brands create --display-name "Acme" --legal-name "Acme Inc" --legal-entity-type CORPORATION --organization-type PRIVATE_PROFIT --ein 12-3456789 --website https://acme.example --address-line1 "1 Main St" --city Austin --state TX --postal-code 78701 --contact-first-name Jane --contact-last-name Doe --contact-email jane@acme.example --contact-phone +15125550100',
     "<%= config.bin %> rcs brands create --from-json brand.json",
     '<%= config.bin %> rcs brands create --from-json brand.json --display-name "Acme" --json',
   ];
