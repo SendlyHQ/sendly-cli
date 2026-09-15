@@ -603,11 +603,110 @@ sendly calls hangup <callId>
 #### Download a Recording
 
 Prints the recording status and, once it is ready, a signed download URL that
-is valid for 5 minutes (Ogg/Opus; agent calls are dual-channel):
+is valid for 5 minutes (Ogg/Opus; agent calls are dual-channel, with the agent
+on the left channel and the other party on the right):
 
 ```bash
 sendly calls recording <callId>
 ```
+
+### Voice Commands
+
+Configure what phone calls depend on: which of your numbers answer calls and
+how, each number's emergency address, and the AI agents that talk on calls.
+The read commands (`voice numbers list`, `voice numbers get`,
+`voice agents list`, `voice agents get` and `voice voices`) work with any API
+key that has the `calls:read` scope (test keys included) or a `sendly login`
+session. Changing anything needs a live API key with `calls:write`; in a team
+workspace, changing a number or managing agents also needs the owner or admin
+role. Voice is being enabled workspace by workspace; until it is on for yours
+these commands return `voice_not_enabled`.
+
+#### Numbers and Their Voice Settings
+
+Every active number in the workspace, the default first, with whether voice is
+on, who answers, the emergency address status and the per-minute rates in
+credits. Name a number by its id or by the phone number in E.164:
+
+```bash
+sendly voice numbers list
+sendly voice numbers get +15555550188
+```
+
+#### Choose How a Number Answers
+
+Real callers get the new behaviour as soon as it saves. `ring_dashboard` rings
+your team in the dashboard; `agent` hands the call to an AI agent:
+
+```bash
+# Ring the team in the dashboard
+sendly voice numbers update +15555550188 --enable
+
+# Have an AI agent answer (this switches voice on too)
+sendly voice numbers update +15555550188 --mode agent --agent <agentId>
+
+# Switch voice off
+sendly voice numbers update +15555550188 --disable
+```
+
+`--mode ring_dashboard` or `--mode agent` switches voice on by itself, so
+`--enable` is optional with them, and `--mode none` on its own switches voice
+off. `--enable` without a mode, or with `--mode none`, rings the team, and
+`--disable` switches voice off whatever `--mode` says. `--mode agent` needs an agent that is switched on
+(`409 agent_disabled` otherwise).
+
+#### Register an Emergency Address
+
+A US or Canadian number needs an emergency address before it can place calls.
+It is where emergency services are sent when someone dials 911 from the
+number, so use the address where the number is actually used. It adds $1.50 a
+month to the number the first time; registering again replaces the address at
+no extra cost.
+
+```bash
+sendly voice numbers emergency-address +15555550188 \
+  --street "500 Example Ave" --unit "Suite 2" --city Austin --state TX --zip 78701
+
+# A Canadian address
+sendly voice numbers emergency-address +15555550199 \
+  --street "100 Sample St" --city Toronto --state ON --zip "M5V 2T6" --country CA
+```
+
+When the address cannot be verified you get `422 invalid_address` with the
+suggested address and the command that registers it, so you can check the
+suggestion before running it.
+
+#### Create and Manage Agents
+
+An agent answers real callers on the numbers pointed at it and talks on the
+calls you place with `sendly calls create`. A workspace can have up to 20.
+
+```bash
+# Voices to choose from
+sendly voice voices
+
+sendly voice agents create --name "Front desk" --voice olivia \
+  --greeting "Thanks for calling Acme, how can I help?" \
+  --instructions "Answer questions about opening hours and take messages."
+
+sendly voice agents list
+sendly voice agents get <agentId>
+
+# Only the flags you pass change
+sendly voice agents update <agentId> --no-sms
+sendly voice agents update <agentId> --disable
+
+# Asks before deleting; --yes skips the prompt
+sendly voice agents delete <agentId>
+```
+
+`--sms` (on unless you pass `--no-sms`) lets the agent text the person on the
+call. Each agent holds its own sending key, limited to sending texts, which is
+revoked when the agent is deleted; `sendly voice agents update <agentId>` with
+no flags issues a new one if it was revoked. An agent that still answers a
+number cannot be deleted (`409 agent_in_use`, which lists the numbers): point
+those numbers at another agent or back to the team first with
+`sendly voice numbers update <number> --mode ring_dashboard`.
 
 ### Short Code Commands
 

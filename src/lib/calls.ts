@@ -108,7 +108,9 @@ export function callRecordingPath(id: string): string {
 }
 
 export const E911_HINT =
-  "Register an emergency address in the dashboard under Calls → Settings";
+  "Register one with `sendly voice numbers emergency-address <number> --street ... --city ... --state ... --zip ...`, or in the dashboard under Calls → Settings";
+
+export const AGENT_IDS_HINT = "List your agents with `sendly voice agents list`";
 
 export const VOICE_ACCESS_HINT =
   "Voice is being enabled workspace by workspace. Contact support@sendly.live to get it switched on.";
@@ -250,14 +252,14 @@ export function reportCallsError(err: unknown): boolean {
     if (/agent doesn't exist/i.test(err.message)) {
       error(err.message, {
         code: "agent_not_found",
-        hint: "Agent ids are shown in the dashboard under Calls → Agents",
+        hint: AGENT_IDS_HINT,
       });
       return true;
     }
     if (/number isn't in your workspace/i.test(err.message)) {
       error(err.message, {
         code: "number_not_found",
-        hint: "List your numbers with `sendly numbers list` and pass one of them as --from",
+        hint: "List your voice numbers with `sendly voice numbers list` and pass one of them as --from",
       });
       return true;
     }
@@ -309,7 +311,7 @@ export function reportCallsError(err: unknown): boolean {
     if (/answered by an ai agent/i.test(err.message)) {
       error(err.message, {
         code: "agent_required",
-        hint: "Pass --agent <id>. Agent ids are shown in the dashboard under Calls → Agents",
+        hint: `Pass --agent <id>. ${AGENT_IDS_HINT}`,
       });
       return true;
     }
@@ -329,13 +331,13 @@ export function reportCallsError(err: unknown): boolean {
     case "agent_disabled":
       error(err.message, {
         code: err.code,
-        hint: "Switch the agent on in the dashboard under Calls → Agents",
+        hint: "Switch the agent on with `sendly voice agents update <agentId> --enable`",
       });
       return true;
     case "no_voice_number":
       error(err.message, {
         code: err.code,
-        hint: "Enable voice on a number in the dashboard under Calls → Settings",
+        hint: "Switch voice on for a number with `sendly voice numbers update <number> --enable`, or in the dashboard under Calls → Settings",
       });
       return true;
     case "lines_busy":

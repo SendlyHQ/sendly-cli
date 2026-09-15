@@ -22,9 +22,9 @@ export default class CallsCreate extends AuthenticatedCommand {
     "Place a phone call that one of your AI agents handles. US and Canadian numbers only; needs a live API key with calls:write and a voice-enabled number";
 
   static examples = [
-    "<%= config.bin %> calls create --to +15555550123 --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b",
-    '<%= config.bin %> calls create --to +15555550123 --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --from +15555550188 --context "Confirm the 3pm appointment on Tuesday"',
-    "<%= config.bin %> calls create --to +15555550123 --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --metadata crmId=lead_8812 --metadata source=cli",
+    "<%= config.bin %> calls create --to +15125550123 --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b",
+    '<%= config.bin %> calls create --to +15125550123 --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --from +15555550188 --context "Confirm the 3pm appointment on Tuesday"',
+    "<%= config.bin %> calls create --to +15125550123 --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --metadata crmId=lead_8812 --metadata source=cli",
   ];
 
   static flags = {
@@ -59,13 +59,13 @@ export default class CallsCreate extends AuthenticatedCommand {
     const agentId = flags.agent.trim();
     if (!to) {
       error("--to cannot be empty", {
-        hint: "Pass the number to call in E.164, e.g. --to +15555550123",
+        hint: "Pass the number to call in E.164, e.g. --to +15125550123",
       });
       this.exit(1);
     }
     if (!agentId) {
       error("--agent cannot be empty", {
-        hint: "Agent ids are shown in the dashboard under Calls → Agents",
+        hint: "List your agents with `sendly voice agents list`",
       });
       this.exit(1);
     }

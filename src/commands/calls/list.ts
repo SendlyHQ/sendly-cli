@@ -107,7 +107,7 @@ export default class CallsList extends AuthenticatedCommand {
       info("No calls yet");
       console.log(
         colors.dim(
-          `Place one with ${colors.code("sendly calls create --to +15555550123 --agent <agentId>")}.`,
+          `Place one with ${colors.code("sendly calls create --to +15125550123 --agent <agentId>")}.`,
         ),
       );
       return;

@@ -96,6 +96,7 @@ export interface ApiFieldError {
 export class ApiError extends Error {
   public hint?: string;
   public fieldErrors?: ApiFieldError[];
+  public body?: Record<string, unknown>;
 
   constructor(
     public code: string,
@@ -391,6 +392,22 @@ class ApiClient {
   }
 
   private handleError(statusCode: number, data: any): never {
+    try {
+      this.throwForStatus(statusCode, data);
+    } catch (thrown) {
+      if (
+        thrown instanceof ApiError &&
+        data &&
+        typeof data === "object" &&
+        !Array.isArray(data)
+      ) {
+        thrown.body = data as Record<string, unknown>;
+      }
+      throw thrown;
+    }
+  }
+
+  private throwForStatus(statusCode: number, data: any): never {
     const error = data?.error || "unknown_error";
     const message = data?.message || `HTTP ${statusCode}`;
     const details = data?.details;
