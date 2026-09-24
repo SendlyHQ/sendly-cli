@@ -32,6 +32,8 @@ import {
   ApiError,
   AuthenticationError,
   ApiKeyRequiredError,
+  ForbiddenError,
+  isMissingScopesError,
   RateLimitError,
   InsufficientCreditsError,
 } from "../../src/lib/api-client.js";
@@ -227,17 +229,108 @@ describe("API Client", () => {
       );
     });
 
-    it("throws AuthenticationError on 403", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 403,
-        json: () => Promise.resolve({ message: "Forbidden" }),
-        headers: new Map(),
+    describe("403", () => {
+      const forbid = (body: Record<string, unknown>) =>
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+          json: () => Promise.resolve(body),
+          headers: new Map(),
+        });
+
+      const rejection = (): Promise<ApiError> =>
+        apiClient.get("/api/test").then(
+          () => {
+            throw new Error("expected the request to fail");
+          },
+          (e: ApiError) => e,
+        );
+
+      it("is a ForbiddenError, never an authentication failure", async () => {
+        forbid({ message: "Forbidden" });
+
+        const err = await rejection();
+        expect(err).toBeInstanceOf(ForbiddenError);
+        expect(err).not.toBeInstanceOf(AuthenticationError);
+        expect(err.statusCode).toBe(403);
+        expect(err.hint).toBeUndefined();
       });
 
-      await expect(apiClient.get("/api/test")).rejects.toThrow(
-        AuthenticationError,
-      );
+      it("keeps the server's code and points verification_required at /verify", async () => {
+        forbid({
+          error: "verification_required",
+          message: "Verification required to create live API keys",
+        });
+
+        const err = await rejection();
+        expect(err).toBeInstanceOf(ForbiddenError);
+        expect(err.code).toBe("verification_required");
+        expect(err.message).toBe(
+          "Verification required to create live API keys",
+        );
+        expect(err.hint).toBe(
+          "Verify your business at https://sendly.live/verify, then try again",
+        );
+      });
+
+      it("uses the server's hint when it sends one", async () => {
+        forbid({
+          error: "insufficient_permissions",
+          message: "CLI session lacks required permissions: keys:write",
+          hint: "Create an API key in the dashboard for this operation",
+        });
+
+        const err = await rejection();
+        expect(err.hint).toBe(
+          "Create an API key in the dashboard for this operation",
+        );
+      });
+
+      it("reads a missing scope as a permission problem, not a missing key", async () => {
+        forbid({
+          error: "insufficient_permissions",
+          message: "This API key lacks required scopes: rcs:write",
+        });
+
+        const err = await rejection();
+        expect(err).toBeInstanceOf(ForbiddenError);
+        expect(err).not.toBeInstanceOf(ApiKeyRequiredError);
+        expect(isMissingScopesError(err)).toBe(true);
+      });
+
+      it("does not read a workspace membership refusal as a missing scope", async () => {
+        forbid({
+          error: "insufficient_permissions",
+          message: "Not a member of this organization",
+        });
+
+        const err = await rejection();
+        expect(err).toBeInstanceOf(ForbiddenError);
+        expect(isMissingScopesError(err)).toBe(false);
+      });
+
+      it("asks for a live key, keeping the server's code", async () => {
+        forbid({
+          error: "rcs_requires_live_key",
+          message: "RCS messages require a live API key.",
+        });
+
+        const err = await rejection();
+        expect(err).toBeInstanceOf(ApiKeyRequiredError);
+        expect(err.code).toBe("rcs_requires_live_key");
+        expect(err.statusCode).toBe(403);
+        expect(err.hint).toBe(
+          "Create a live key with: sendly keys create --type live",
+        );
+      });
+
+      it("still reads an uncoded API key refusal as a missing key", async () => {
+        forbid({ message: "A valid API key is required" });
+
+        await expect(apiClient.get("/api/test")).rejects.toThrow(
+          ApiKeyRequiredError,
+        );
+      });
     });
 
     it("throws InsufficientCreditsError on 402", async () => {

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   ApiError,
   ApiKeyRequiredError,
-  AuthenticationError,
+  ForbiddenError,
   NotFoundError,
   ValidationError,
 } from "../../../src/lib/api-client.js";
@@ -644,7 +644,7 @@ describe("reportVoiceError", () => {
 
   it("uses the role hint the command passes on a 403 forbidden", () => {
     const err = withBody(
-      new AuthenticationError("You don't have permission to do that in this workspace."),
+      new ForbiddenError("forbidden", "You don't have permission to do that in this workspace."),
       { error: "forbidden" },
     );
     expect(reportVoiceError(err, { forbiddenHint: "Owners and admins only" })).toBe(true);
@@ -680,7 +680,7 @@ describe("reportVoiceError", () => {
     expect(reported().code).toBe("voice_not_enabled");
 
     errorSpy.mockClear();
-    const scope = withBody(new AuthenticationError("Missing required scopes: calls:write"), {
+    const scope = withBody(new ForbiddenError("insufficient_permissions", "Missing required scopes: calls:write"), {
       error: "insufficient_permissions",
     });
     expect(reportVoiceError(scope)).toBe(true);

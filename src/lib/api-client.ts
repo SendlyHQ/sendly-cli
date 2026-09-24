@@ -137,6 +137,38 @@ export class ApiKeyRequiredError extends ApiError {
   }
 }
 
+const FORBIDDEN_HINTS: Record<string, string> = {
+  verification_required:
+    "Verify your business at https://sendly.live/verify, then try again",
+  insufficient_permission: "Ask a workspace owner or admin to make this change",
+};
+
+const LIVE_KEY_CODES = new Set([
+  "live_key_required",
+  "rcs_requires_live_key",
+  "whatsapp_requires_live_key",
+]);
+
+export class ForbiddenError extends ApiError {
+  constructor(
+    code: string,
+    message: string,
+    hint?: string,
+    details?: Record<string, unknown>,
+  ) {
+    super(code, message, 403, details, hint ?? FORBIDDEN_HINTS[code]);
+    this.name = "ForbiddenError";
+  }
+}
+
+export function isMissingScopesError(err: unknown): err is ForbiddenError {
+  return (
+    err instanceof ForbiddenError &&
+    err.code === "insufficient_permissions" &&
+    /scopes|required permissions/i.test(err.message)
+  );
+}
+
 export class RateLimitError extends ApiError {
   constructor(
     public retryAfter: number,
@@ -483,8 +515,6 @@ class ApiClient {
 
     switch (statusCode) {
       case 401:
-      case 403:
-        // Detect if this is an API key required error vs general auth error
         if (
           error === "invalid_api_key" ||
           error === "api_key_required" ||
@@ -496,6 +526,44 @@ class ApiClient {
           );
         }
         throw new AuthenticationError(message);
+      case 403: {
+        const serverHint =
+          typeof data?.hint === "string" && data.hint.trim()
+            ? data.hint
+            : undefined;
+        const uncoded = error === "unknown_error";
+        if (
+          LIVE_KEY_CODES.has(error) ||
+          (uncoded && /live api key/i.test(message))
+        ) {
+          const liveKey = new ApiKeyRequiredError(
+            message,
+            serverHint ??
+              "Create a live key with: sendly keys create --type live",
+          );
+          liveKey.code = uncoded ? "live_key_required" : error;
+          liveKey.statusCode = 403;
+          throw liveKey;
+        }
+        if (
+          error === "invalid_api_key" ||
+          error === "api_key_required" ||
+          (uncoded && /api key/i.test(message))
+        ) {
+          throw new ApiKeyRequiredError(
+            message || "A valid API key is required for this command",
+            "Set SENDLY_API_KEY environment variable or create a key with:\n  sendly keys create --type test",
+          );
+        }
+        const forbidden = new ForbiddenError(
+          error,
+          message,
+          serverHint,
+          details,
+        );
+        forbidden.fieldErrors = fieldErrors;
+        throw forbidden;
+      }
       case 400: {
         const validation = new ValidationError(message, details);
         validation.fieldErrors = fieldErrors;

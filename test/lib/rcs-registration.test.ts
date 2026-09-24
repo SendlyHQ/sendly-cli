@@ -26,7 +26,7 @@ vi.mock("../../src/lib/config.js", () => ({
 
 import {
   ApiError,
-  AuthenticationError,
+  ForbiddenError,
   NotFoundError,
   ValidationError,
 } from "../../src/lib/api-client.js";
@@ -387,7 +387,10 @@ describe("reportRcsError", () => {
   it("adds a hint for the scope and lock errors and ignores the rest", () => {
     expect(
       reportRcsError(
-        new AuthenticationError("Missing required scopes: rcs:write"),
+        new ForbiddenError(
+          "insufficient_permissions",
+          "Missing required scopes: rcs:write",
+        ),
       ),
     ).toBe(true);
     expect(stderr.join("\n")).toMatch(/rcs:write/);

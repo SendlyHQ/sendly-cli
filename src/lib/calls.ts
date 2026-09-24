@@ -7,8 +7,8 @@
 import {
   ApiError,
   ApiKeyRequiredError,
-  AuthenticationError,
   InsufficientCreditsError,
+  isMissingScopesError,
   NotFoundError,
   ValidationError,
 } from "./api-client.js";
@@ -281,10 +281,7 @@ export function reportCallsError(err: unknown): boolean {
     return true;
   }
 
-  if (
-    err instanceof AuthenticationError &&
-    /missing required scopes/i.test(err.message)
-  ) {
+  if (isMissingScopesError(err)) {
     error(err.message, {
       code: "insufficient_permissions",
       hint: "Use an API key with the calls:read and calls:write scopes, or sign in with `sendly login`",

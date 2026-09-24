@@ -1,6 +1,6 @@
 import { Flags } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
-import { apiClient } from "../../lib/api-client.js";
+import { apiClient, ApiError } from "../../lib/api-client.js";
 import {
   success,
   error,
@@ -116,15 +116,17 @@ export default class VerifySend extends AuthenticatedCommand {
     } catch (err: any) {
       sendSpinner.stop();
 
-      if (err.message?.includes("insufficient_credits")) {
+      const code = err instanceof ApiError ? err.body?.error : undefined;
+
+      if (code === "insufficient_credits") {
         error("Insufficient credits", {
           hint: `Run ${colors.code("sendly credits balance")} to check your balance`,
         });
-      } else if (err.message?.includes("verification_required")) {
+      } else if (code === "verification_required") {
         error("Business verification required", {
-          hint: "Complete verification at https://sendly.live/dashboard/verification",
+          hint: "Complete verification at https://sendly.live/verify",
         });
-      } else if (err.message?.includes("invalid_phone")) {
+      } else if (code === "invalid_phone_format") {
         error("Invalid phone number format", {
           hint: "Use E.164 format: +1234567890",
         });

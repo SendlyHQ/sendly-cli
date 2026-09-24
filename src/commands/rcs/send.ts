@@ -4,7 +4,7 @@ import {
   apiClient,
   ApiError,
   ApiKeyRequiredError,
-  AuthenticationError,
+  ForbiddenError,
   NotFoundError,
   ValidationError,
 } from "../../lib/api-client.js";
@@ -291,20 +291,20 @@ export default class RcsSend extends AuthenticatedCommand {
           hint: "Pass --agent <id> — list them with `sendly rcs agents`",
         });
       } else if (
-        err instanceof AuthenticationError &&
-        /opted out/i.test(err.message ?? "")
+        err instanceof ForbiddenError &&
+        err.code === "recipient_opted_out"
       ) {
         error(err.message);
       } else if (
-        err instanceof AuthenticationError &&
-        /agent/i.test(err.message ?? "")
+        err instanceof ForbiddenError &&
+        err.code === "rcs_agent_not_ready"
       ) {
         error(err.message, {
           hint: "See which agents can send with `sendly rcs agents`",
         });
       } else if (
-        err instanceof AuthenticationError &&
-        /rcs|verification|not supported|registration/i.test(err.message ?? "")
+        err instanceof ForbiddenError &&
+        err.code === "sms_fallback_unavailable"
       ) {
         error(err.message, {
           hint: "This recipient can't receive RCS and your account can't send SMS to this destination — complete verification, or message an RCS-capable recipient",

@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { Flags } from "@oclif/core";
 import {
   ApiError,
-  AuthenticationError,
+  isMissingScopesError,
   NotFoundError,
   ValidationError,
 } from "./api-client.js";
@@ -951,10 +951,7 @@ export function reportRcsError(err: unknown): boolean {
     return false;
   }
 
-  if (
-    err instanceof AuthenticationError &&
-    /missing required scopes/i.test(err.message)
-  ) {
+  if (isMissingScopesError(err)) {
     error(err.message, {
       code: "insufficient_permissions",
       hint: "Use an API key with the rcs:read and rcs:write scopes, or sign in with `sendly login`",

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   ApiError,
   ApiKeyRequiredError,
-  AuthenticationError,
+  ForbiddenError,
   InsufficientCreditsError,
   NotFoundError,
   ValidationError,
@@ -390,7 +390,7 @@ describe("calls wire contract", () => {
     });
   });
 
-  it("a missing scope surfaces as an AuthenticationError with the scope named", async () => {
+  it("a missing scope surfaces as a ForbiddenError with the scope named", async () => {
     mockFetch.mockResolvedValueOnce(
       fail(403, {
         error: "insufficient_permissions",
@@ -399,8 +399,9 @@ describe("calls wire contract", () => {
     );
 
     const attempt = apiClient.post(CALLS_PATH, {});
-    await expect(attempt).rejects.toBeInstanceOf(AuthenticationError);
+    await expect(attempt).rejects.toBeInstanceOf(ForbiddenError);
     await expect(attempt).rejects.toMatchObject({
+      code: "insufficient_permissions",
       message: "Missing required scopes: calls:write",
     });
   });
@@ -561,7 +562,10 @@ describe("reportCallsError", () => {
   it("names the calls scopes on a missing-scope 403", () => {
     expect(
       reportCallsError(
-        new AuthenticationError("Missing required scopes: calls:write"),
+        new ForbiddenError(
+          "insufficient_permissions",
+          "Missing required scopes: calls:write",
+        ),
       ),
     ).toBe(true);
     expect(String(reported().hint)).toContain("calls:write");

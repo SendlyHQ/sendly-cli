@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   ApiError,
-  AuthenticationError,
+  ForbiddenError,
   NotFoundError,
 } from "../../../src/lib/api-client.js";
 
@@ -359,7 +359,7 @@ describe("rcs registration wire contract", () => {
     });
   });
 
-  it("a missing scope surfaces as an AuthenticationError with the scope named", async () => {
+  it("a missing scope surfaces as a ForbiddenError with the scope named", async () => {
     mockFetch.mockResolvedValueOnce(
       fail(403, {
         error: "insufficient_permissions",
@@ -368,8 +368,9 @@ describe("rcs registration wire contract", () => {
     );
 
     const attempt = apiClient.post("/api/v1/rcs/brands", {});
-    await expect(attempt).rejects.toBeInstanceOf(AuthenticationError);
+    await expect(attempt).rejects.toBeInstanceOf(ForbiddenError);
     await expect(attempt).rejects.toMatchObject({
+      code: "insufficient_permissions",
       message: "Missing required scopes: rcs:write",
     });
   });
