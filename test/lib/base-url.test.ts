@@ -238,6 +238,28 @@ describe("Base URL resolution", () => {
       expect(() => resolveBaseUrl()).toThrow(/live API key/);
     });
 
+    it("words a refusal for the session token as a session, not an API key", () => {
+      process.env.SENDLY_BASE_URL = "https://staging.example.com";
+
+      let message = "";
+      try {
+        resolveBaseUrl(undefined, { sessionToken: true });
+      } catch (err) {
+        message = (err as Error).message;
+      }
+
+      expect(message).toContain("Refusing to send your sendly login session");
+      expect(message).toContain("Unset SENDLY_BASE_URL, or point it at https://sendly.live");
+      expect(message).not.toMatch(/API key|test key/);
+    });
+
+    it("keeps the API key wording when no session token is being sent", () => {
+      mockStore.apiKey = "sk_live_v1_mock_token";
+      process.env.SENDLY_BASE_URL = "https://staging.example.com";
+
+      expect(() => resolveBaseUrl()).toThrow(/live API key/);
+    });
+
     it("honours a live SENDLY_API_KEY over the stored test key", () => {
       process.env.SENDLY_API_KEY = "sk_live_v1_env_token";
       process.env.SENDLY_BASE_URL = "https://staging.example.com";
@@ -413,6 +435,70 @@ describe("Base URL resolution", () => {
         /no path/,
       );
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("never sends an expired session token to a host a live credential may not reach", async () => {
+      delete mockStore.apiKey;
+      mockStore.accessToken = "cli_v2_expired.sig";
+      mockStore.tokenExpiresAt = Date.now() - 60_000;
+      process.env.SENDLY_BASE_URL = "https://attacker.example.com";
+
+      const revocation = await apiClient.revokeSession("cli_v2_expired.sig");
+      await expect(apiClient.get("/api/v1/account")).rejects.toThrow();
+
+      expect(revocation.status).toBe("refused");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("never sends the stored session token to such a host while a test key is active", async () => {
+      mockStore.accessToken = "cli_v2_session.sig";
+      mockStore.tokenExpiresAt = Date.now() + 60_000;
+      process.env.SENDLY_BASE_URL = "https://staging.example.com";
+
+      const revocation = await apiClient.revokeSession("cli_v2_session.sig");
+
+      expect(revocation).toEqual({
+        status: "refused",
+        reason: expect.stringContaining("Refusing to send your sendly login session"),
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("sends the session token to loopback and to the production host", async () => {
+      mockStore.accessToken = "cli_v2_session.sig";
+      mockFetch.mockResolvedValue(okResponse());
+
+      process.env.SENDLY_BASE_URL = "http://localhost:5001";
+      await expect(apiClient.revokeSession("cli_v2_session.sig")).resolves.toEqual({ status: "confirmed" });
+      delete process.env.SENDLY_BASE_URL;
+      await expect(apiClient.revokeSession("cli_v2_session.sig")).resolves.toEqual({ status: "confirmed" });
+
+      expect(mockFetch.mock.calls.map(([url]) => url)).toEqual([
+        "http://localhost:5001/api/cli/auth/logout",
+        "https://sendly.live/api/cli/auth/logout",
+      ]);
+    });
+
+    it("trusts a 401 invalid_token only from the production host", async () => {
+      mockStore.accessToken = "cli_v2_session.sig";
+      const invalidToken = () => ({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: "invalid_token" }),
+        headers: new Map(),
+      });
+      mockFetch.mockResolvedValueOnce(invalidToken()).mockResolvedValueOnce(invalidToken());
+
+      process.env.SENDLY_BASE_URL = "http://localhost:5001";
+      const fromLocalhost = await apiClient.revokeSession("cli_v2_session.sig");
+      delete process.env.SENDLY_BASE_URL;
+      const fromProduction = await apiClient.revokeSession("cli_v2_session.sig");
+
+      expect(fromLocalhost).toEqual({
+        status: "unconfirmed",
+        reason: "the server responded with HTTP 401",
+      });
+      expect(fromProduction).toEqual({ status: "confirmed" });
     });
 
     it("appends the API path exactly once to an accepted origin", async () => {

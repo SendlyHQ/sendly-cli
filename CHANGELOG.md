@@ -1,5 +1,15 @@
 # @sendly/cli
 
+## Unreleased
+
+### Patch Changes
+
+- **`sendly logout` now always signs your session out on the server.** It used to tell the server only when the credential in use was an unexpired `sendly login` session. If the session had expired, or an API key was set as well, it deleted the local copy and nothing else, and because an expired session can still be refreshed for 150 days, the token kept working for anyone who had a copy of it. Logout now sends the stored session to the server whenever there is one, expired or not, whatever API key is set, and then clears your local credentials as before.
+- If the server cannot be reached, does not answer in time, or cannot record the sign-out, `sendly logout` still clears your local credentials and exits successfully, but prints `Logged out locally` and a warning that the server-side sign-out could not be confirmed, so the session may stay valid on the server until it expires.
+- If `SENDLY_BASE_URL` or `SENDLY_API_URL` names a host the CLI will not send your session to, `sendly logout` now sends nothing, keeps your local credentials and exits 1 with a message telling you to unset the variable or point it at `https://sendly.live`. Clearing the local copy there would leave the session valid on the server with no way to sign it out.
+- `--json` output now always includes `serverSignOut`: `confirmed`, `unconfirmed`, `none` (there was no stored session) or `refused`, plus a `reason` when it is not confirmed. A refusal is reported on stderr with `error: true`.
+- A stored session is now treated as a live credential even after it expires. The CLI will not send it, to sign out or to refresh it, to a host named by `SENDLY_BASE_URL` or `SENDLY_API_URL` unless that host is `https://sendly.live` (or a subdomain) or a loopback address, even while a test key is active. Before, an expired session, or one stored next to an active test key, could be sent to any `https://` host named by the environment.
+
 ## 4.1.0
 
 ### Minor Changes

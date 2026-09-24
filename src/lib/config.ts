@@ -276,6 +276,14 @@ function isProductionHost(parsed: URL): boolean {
   return host === production || host.endsWith(`.${production}`);
 }
 
+export function isProductionBaseUrl(url: string): boolean {
+  try {
+    return isProductionHost(new URL(url));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The kind of credential a request would carry, using the same rule as
  * getAuthInfo(): a key is "test" only when it carries the `sk_test_` prefix.
@@ -302,7 +310,11 @@ function activeCredentialKind(): "live" | "test" | "none" {
  * subject to this check: it is written by an explicit local command rather
  * than picked up from the ambient environment.
  */
-function checkSuppliedBaseUrl(value: string, source: string): string | undefined {
+function checkSuppliedBaseUrl(
+  value: string,
+  source: string,
+  options: BaseUrlOptions,
+): string | undefined {
   let parsed: URL;
   try {
     parsed = new URL(value);
@@ -322,6 +334,10 @@ function checkSuppliedBaseUrl(value: string, source: string): string | undefined
     return undefined;
   }
 
+  if (options.sessionToken) {
+    return `${source} points at ${parsed.origin}. Refusing to send your sendly login session to any host other than ${PRODUCTION_BASE_URL} or a loopback address. Unset ${source}, or point it at ${PRODUCTION_BASE_URL} (or http://localhost:PORT for a local server)`;
+  }
+
   if (activeCredentialKind() === "live") {
     return `${source} points at ${parsed.origin}, but a live credential is in use. Refusing to send a live API key to any host other than ${PRODUCTION_BASE_URL} or a loopback address. Use a test key (sk_test_...) or point ${source} at http://localhost:PORT`;
   }
@@ -331,6 +347,10 @@ function checkSuppliedBaseUrl(value: string, source: string): string | undefined
   }
 
   return undefined;
+}
+
+export interface BaseUrlOptions {
+  sessionToken?: boolean;
 }
 
 /**
@@ -372,7 +392,10 @@ export interface BaseUrlResolution {
  * tooling that name carries a version-suffixed base (`.../api/v1`), and the
  * CLI appends the version itself.
  */
-export function resolveBaseUrlSafe(override?: string): BaseUrlResolution {
+export function resolveBaseUrlSafe(
+  override?: string,
+  options: BaseUrlOptions = {},
+): BaseUrlResolution {
   const supplied: [string, string | undefined][] = [
     ["The --base-url value", override],
     ["SENDLY_BASE_URL", process.env.SENDLY_BASE_URL],
@@ -382,7 +405,7 @@ export function resolveBaseUrlSafe(override?: string): BaseUrlResolution {
   for (const [source, raw] of supplied) {
     const url = normalizeBaseUrl(raw);
     if (!url) continue;
-    const error = checkSuppliedBaseUrl(url, source);
+    const error = checkSuppliedBaseUrl(url, source, options);
     return error ? { url, source, error } : { url, source };
   }
 
@@ -397,8 +420,11 @@ export function resolveBaseUrlSafe(override?: string): BaseUrlResolution {
  * one the CLI will send credentials to. Callers that only display the host
  * should use resolveBaseUrlSafe().
  */
-export function resolveBaseUrl(override?: string): string {
-  const resolved = resolveBaseUrlSafe(override);
+export function resolveBaseUrl(
+  override?: string,
+  options: BaseUrlOptions = {},
+): string {
+  const resolved = resolveBaseUrlSafe(override, options);
   if (resolved.error) throw new Error(resolved.error);
   return resolved.url;
 }

@@ -9,6 +9,7 @@ import {
   getAuthToken,
   getStoredAccessToken,
   getEffectiveValue,
+  isProductionBaseUrl,
   resolveBaseUrl,
   setAuthTokens,
 } from "./config.js";
@@ -81,6 +82,11 @@ export interface ApiResponse<T> {
     details?: Record<string, unknown>;
   };
 }
+
+export type SessionRevocation =
+  | { status: "confirmed" }
+  | { status: "unconfirmed"; reason: string }
+  | { status: "refused"; reason: string };
 
 export interface RateLimitInfo {
   limit: number;
@@ -236,7 +242,7 @@ class ApiClient {
 
       try {
         const response = await fetch(
-          `${this.getBaseUrl()}/api/cli/auth/refresh`,
+          `${resolveBaseUrl(undefined, { sessionToken: true })}/api/cli/auth/refresh`,
           {
             method: "POST",
             headers: {
@@ -275,6 +281,66 @@ class ApiClient {
       return await this.refreshing;
     } finally {
       this.refreshing = null;
+    }
+  }
+
+  async revokeSession(token: string): Promise<SessionRevocation> {
+    let baseUrl: string;
+    try {
+      baseUrl = resolveBaseUrl(undefined, { sessionToken: true });
+    } catch (error) {
+      return { status: "refused", reason: (error as Error).message };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      getEffectiveValue("timeout"),
+    );
+
+    try {
+      const response = await fetch(
+        `${baseUrl}/api/cli/auth/logout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": `@sendly/cli/${version}`,
+          },
+          body: JSON.stringify({ accessToken: token }),
+          signal: controller.signal,
+        },
+      );
+
+      if (response.ok) {
+        return { status: "confirmed" };
+      }
+
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (
+        response.status === 401 &&
+        data.error === "invalid_token" &&
+        isProductionBaseUrl(baseUrl)
+      ) {
+        return { status: "confirmed" };
+      }
+
+      return {
+        status: "unconfirmed",
+        reason: `the server responded with HTTP ${response.status}`,
+      };
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return { status: "unconfirmed", reason: "the server did not respond in time" };
+      }
+      if (error instanceof TypeError) {
+        return { status: "unconfirmed", reason: "the server could not be reached" };
+      }
+      return { status: "unconfirmed", reason: (error as Error).message };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
