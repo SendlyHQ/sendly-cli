@@ -24,7 +24,7 @@ interface WhatsappSenderProfile {
 
 export default class WhatsappProfileUpdate extends AuthenticatedCommand {
   static description =
-    "Update the WhatsApp business profile customers see for one of your connected numbers";
+    "Update the WhatsApp business profile customers see for one of your connected numbers. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner or admin.";
 
   static examples = [
     '<%= config.bin %> whatsapp profile update +15551234567 --about "Family-run bakery in Austin"',
@@ -132,8 +132,8 @@ export default class WhatsappProfileUpdate extends AuthenticatedCommand {
           hint: `Connect it first: sendly whatsapp connect --number ${args.number}`,
         });
       } else if (err instanceof NotFoundError) {
-        error("WhatsApp isn't available on your workspace yet.", {
-          hint: "WhatsApp is rolling out gradually — contact support@sendly.live for early access.",
+        error("WhatsApp isn't enabled for your account yet.", {
+          hint: "WhatsApp is enabled per person (the user who owns the API key, not the workspace) and is rolling out gradually. Contact support@sendly.live for early access.",
         });
       } else {
         throw err;

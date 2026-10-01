@@ -73,6 +73,9 @@ export default class CallsGet extends AuthenticatedCommand {
       ["Status", formatCallStatus(call.status)],
       ["Direction", call.direction],
       ["Kind", call.kind],
+      ...(call.channel
+        ? ([["Channel", call.channel]] as Array<[string, string]>)
+        : []),
       ["Handled by", call.handledBy],
       ["Agent", call.agentId ?? colors.dim("-")],
       ["From", call.from ?? colors.dim("-")],

@@ -51,16 +51,31 @@ function normalizeIdempotencyKey(key: string | undefined): string | undefined {
   return trimmed;
 }
 
-/**
- * True when the error carries an actual 5xx response from the server, as
- * opposed to a network failure where the outcome of the request is unknown.
- */
-function isServerErrorResponse(error: unknown): boolean {
-  return error instanceof ApiError && error.statusCode >= 500;
+export function assertSafePath(path: string): void {
+  const pathname = path.split(/[?#]/, 1)[0];
+  for (const segment of pathname.split("/").slice(1)) {
+    const decoded = segment.replace(/%2e/gi, ".");
+    if (decoded === "" || decoded === "." || decoded === "..") {
+      throw new ValidationError(
+        decoded === ""
+          ? "An ID can't be empty: the request would go to a different endpoint"
+          : `"${decoded}" can't be used as an ID: the request would go to a different endpoint`,
+      );
+    }
+  }
+}
+
+function isKeyCheckBusy(error: unknown): error is RateLimitError {
+  return (
+    error instanceof RateLimitError &&
+    error.code === "too_many_concurrent_verifications" &&
+    error.retryAfter <= 60
+  );
 }
 
 /**
- * Check if an error is retryable (network errors or 5xx server errors)
+ * Check if an error is retryable (network errors, 5xx server errors, or an
+ * API key check that was too busy to run)
  */
 function isRetryableError(error: unknown): boolean {
   // Network errors
@@ -71,7 +86,20 @@ function isRetryableError(error: unknown): boolean {
   if (error instanceof ApiError && error.statusCode >= 500) {
     return true;
   }
-  return false;
+  return isKeyCheckBusy(error);
+}
+
+function retryDelayMs(error: unknown, attempt: number): number {
+  if (isKeyCheckBusy(error)) return error.retryAfter * 1000;
+  return Math.min(1000 * Math.pow(2, attempt), 10000);
+}
+
+function errorSentence(error: unknown): string | undefined {
+  return typeof error === "string" &&
+    error.trim() !== "" &&
+    !/^[a-z0-9_]+$/.test(error)
+    ? error
+    : undefined;
 }
 
 export interface ApiResponse<T> {
@@ -127,10 +155,15 @@ export class AuthenticationError extends ApiError {
   }
 }
 
+export const CREATE_TEST_KEY_COMMAND =
+  'sendly keys create --name "Test key" --type test';
+export const CREATE_LIVE_KEY_COMMAND =
+  'sendly keys create --name "Live key" --type live';
+
 export class ApiKeyRequiredError extends ApiError {
   constructor(
     message: string = "API key required for this operation.",
-    public hint: string = "Set SENDLY_API_KEY environment variable or create a key with: sendly keys create --type test",
+    public hint: string = `Set SENDLY_API_KEY environment variable or create a key with: ${CREATE_TEST_KEY_COMMAND}`,
   ) {
     super("api_key_required", message, 401);
     this.name = "ApiKeyRequiredError";
@@ -169,13 +202,23 @@ export function isMissingScopesError(err: unknown): err is ForbiddenError {
   );
 }
 
+const RATE_LIMIT_HINTS: Record<string, (retryAfter: number) => string> = {
+  too_many_failed_key_attempts: (retryAfter) =>
+    `An API key from this address was refused too many times, so keys from it are blocked for ${retryAfter} seconds. Check the key in SENDLY_API_KEY or your CLI config before you try again.`,
+  too_many_concurrent_verifications: (retryAfter) =>
+    `Too many API key checks are running for this account at once. Try again in ${retryAfter} second${retryAfter === 1 ? "" : "s"}.`,
+};
+
 export class RateLimitError extends ApiError {
   constructor(
     public retryAfter: number,
     message: string = "Rate limit exceeded",
+    code: string = "rate_limit_exceeded",
   ) {
-    const hint = `Wait ${retryAfter} seconds before retrying, or upgrade your plan for higher limits`;
-    super("rate_limit_exceeded", message, 429, undefined, hint);
+    const hint = Object.hasOwn(RATE_LIMIT_HINTS, code)
+      ? RATE_LIMIT_HINTS[code](retryAfter)
+      : `Wait ${retryAfter} seconds before retrying, or upgrade your plan for higher limits`;
+    super(code, message, 429, undefined, hint);
     this.name = "RateLimitError";
   }
 }
@@ -385,9 +428,12 @@ class ApiClient {
       requireAuth?: boolean;
       idempotencyKey?: string;
       autoIdempotencyKey?: boolean;
+      retry?: boolean;
+      onStatus?: (status: number) => void;
     } = {},
   ): Promise<T> {
     const { body, query, requireAuth = true } = options;
+    assertSafePath(path);
     const maxRetries = getEffectiveValue("maxRetries");
     const timeout = getEffectiveValue("timeout");
 
@@ -401,7 +447,7 @@ class ApiClient {
     }
 
     const explicitKey = normalizeIdempotencyKey(options.idempotencyKey);
-    let idempotencyKey =
+    const idempotencyKey =
       explicitKey ??
       (method === "POST" && options.autoIdempotencyKey !== false
         ? generateIdempotencyKey()
@@ -446,11 +492,16 @@ class ApiClient {
           this.handleError(response.status, data);
         }
 
+        options.onStatus?.(response.status);
         return data as T;
       } catch (error) {
         lastError = error as Error;
 
-        if (!isRetryableError(error)) {
+        if (
+          options.retry === false
+            ? !isKeyCheckBusy(error)
+            : !isRetryableError(error)
+        ) {
           throw error;
         }
 
@@ -458,17 +509,7 @@ class ApiClient {
           throw error;
         }
 
-        // A 5xx means the server responded (and may have cached that response
-        // under the key), so an auto-generated key is rotated to let the retry
-        // re-execute. Network errors leave the outcome unknown — the key is
-        // kept so the server can dedupe a request that actually went through.
-        // Caller-supplied keys are never rotated.
-        if (!explicitKey && idempotencyKey && isServerErrorResponse(error)) {
-          idempotencyKey = generateIdempotencyKey();
-        }
-
-        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
-        await sleep(backoffMs);
+        await sleep(retryDelayMs(error, attempt));
       }
     }
 
@@ -507,7 +548,8 @@ class ApiClient {
 
   private throwForStatus(statusCode: number, data: any): never {
     const error = data?.error || "unknown_error";
-    const message = data?.message || `HTTP ${statusCode}`;
+    const message =
+      data?.message || errorSentence(data?.error) || `HTTP ${statusCode}`;
     const details = data?.details;
     const fieldErrors = Array.isArray(data?.errors)
       ? (data.errors as ApiFieldError[])
@@ -522,7 +564,7 @@ class ApiClient {
         ) {
           throw new ApiKeyRequiredError(
             message || "A valid API key is required for this command",
-            "Set SENDLY_API_KEY environment variable or create a key with:\n  sendly keys create --type test",
+            `Set SENDLY_API_KEY environment variable or create a key with:\n  ${CREATE_TEST_KEY_COMMAND}`,
           );
         }
         throw new AuthenticationError(message);
@@ -538,8 +580,7 @@ class ApiClient {
         ) {
           const liveKey = new ApiKeyRequiredError(
             message,
-            serverHint ??
-              "Create a live key with: sendly keys create --type live",
+            serverHint ?? `Create a live key with: ${CREATE_LIVE_KEY_COMMAND}`,
           );
           liveKey.code = uncoded ? "live_key_required" : error;
           liveKey.statusCode = 403;
@@ -552,7 +593,7 @@ class ApiClient {
         ) {
           throw new ApiKeyRequiredError(
             message || "A valid API key is required for this command",
-            "Set SENDLY_API_KEY environment variable or create a key with:\n  sendly keys create --type test",
+            `Set SENDLY_API_KEY environment variable or create a key with:\n  ${CREATE_TEST_KEY_COMMAND}`,
           );
         }
         const forbidden = new ForbiddenError(
@@ -577,12 +618,20 @@ class ApiClient {
           throw new PaymentMethodRequiredError(message);
         throw new InsufficientCreditsError(message);
       case 404:
-        // If the server sent no message, use NotFoundError's friendly default
-        // ("Resource not found") rather than a bare "HTTP 404".
-        throw new NotFoundError(data?.message || undefined);
-      case 429:
+        // If the server sent neither a message nor a sentence, use
+        // NotFoundError's friendly default ("Resource not found") rather than
+        // a bare "HTTP 404".
+        throw new NotFoundError(
+          data?.message || errorSentence(data?.error) || undefined,
+        );
+      case 429: {
         const retryAfter = data?.retryAfter || 60;
-        throw new RateLimitError(retryAfter, message);
+        throw new RateLimitError(
+          retryAfter,
+          message,
+          Object.hasOwn(RATE_LIMIT_HINTS, error) ? error : undefined,
+        );
+      }
       default: {
         const defaultHint =
           statusCode >= 500
@@ -618,7 +667,12 @@ class ApiClient {
     path: string,
     body?: Record<string, unknown>,
     requireAuth: boolean = true,
-    options: { idempotencyKey?: string; autoIdempotencyKey?: boolean } = {},
+    options: {
+      idempotencyKey?: string;
+      autoIdempotencyKey?: boolean;
+      retry?: boolean;
+      onStatus?: (status: number) => void;
+    } = {},
   ): Promise<T> {
     return this.request<T>("POST", path, { body, requireAuth, ...options });
   }
@@ -657,7 +711,9 @@ class ApiClient {
       mimetype?: string;
     },
     requireAuth: boolean = true,
+    options: { retry?: boolean; organization?: boolean } = {},
   ): Promise<T> {
+    assertSafePath(path);
     const maxRetries = getEffectiveValue("maxRetries");
     const timeout = getEffectiveValue("timeout");
     const url = `${this.getBaseUrl()}${path}`;
@@ -684,7 +740,14 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${await this.ensureAuth()}`;
     }
 
-    let idempotencyKey = generateIdempotencyKey();
+    const orgId = options.organization
+      ? getEffectiveValue("currentOrgId")
+      : undefined;
+    if (orgId) {
+      headers["X-Organization-Id"] = orgId;
+    }
+
+    const idempotencyKey = generateIdempotencyKey();
 
     let lastError: Error | undefined;
     let didRefresh = false;
@@ -724,7 +787,11 @@ class ApiClient {
       } catch (error) {
         lastError = error as Error;
 
-        if (!isRetryableError(error)) {
+        if (
+          options.retry === false
+            ? !isKeyCheckBusy(error)
+            : !isRetryableError(error)
+        ) {
           throw error;
         }
 
@@ -732,14 +799,7 @@ class ApiClient {
           throw error;
         }
 
-        // Same rotation rules as request(): rotate the auto key only after
-        // an actual 5xx response; keep it across network-error retries.
-        if (isServerErrorResponse(error)) {
-          idempotencyKey = generateIdempotencyKey();
-        }
-
-        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
-        await sleep(backoffMs);
+        await sleep(retryDelayMs(error, attempt));
       }
     }
 

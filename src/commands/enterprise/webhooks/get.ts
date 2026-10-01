@@ -10,11 +10,9 @@ import {
 } from "../../../lib/output.js";
 
 interface WebhookConfig {
-  url: string;
-  events: string[];
-  isActive: boolean;
-  createdAt: string;
-  lastDeliveryAt?: string;
+  url: string | null;
+  events: string[] | null;
+  workspaces: string[] | null;
 }
 
 export default class EnterpriseWebhooksGet extends AuthenticatedCommand {
@@ -52,13 +50,9 @@ export default class EnterpriseWebhooksGet extends AuthenticatedCommand {
 
     keyValue({
       URL: response.url,
-      Events: response.events.length > 0
+      Events: response.events?.length
         ? response.events.join(", ")
         : colors.dim("all events"),
-      Status: response.isActive
-        ? colors.success("active")
-        : colors.warning("inactive"),
-      "Last Delivery": response.lastDeliveryAt || colors.dim("never"),
     });
   }
 }

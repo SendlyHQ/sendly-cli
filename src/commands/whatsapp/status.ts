@@ -1,9 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
 import { Args } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
 import { apiClient, NotFoundError } from "../../lib/api-client.js";
-import { getConfigDir } from "../../lib/config.js";
 import {
   success,
   error,
@@ -12,29 +9,7 @@ import {
   spinner,
   isJsonMode,
 } from "../../lib/output.js";
-
-interface SignupStatusResponse {
-  id: string;
-  status: string;
-  phoneNumber: string;
-  businessAccountId: string | null;
-  failureReasons: string[] | null;
-  updatedAt: string;
-}
-
-/** Read the signup id remembered by `sendly whatsapp connect`. */
-function lastSignupId(): string | undefined {
-  try {
-    const raw = fs.readFileSync(
-      path.join(getConfigDir(), "whatsapp-signup.json"),
-      "utf8",
-    );
-    const parsed = JSON.parse(raw) as { id?: string };
-    return parsed.id || undefined;
-  } catch {
-    return undefined;
-  }
-}
+import { lastSignupId, type WhatsappSignup } from "../../lib/whatsapp.js";
 
 export default class WhatsappStatus extends AuthenticatedCommand {
   static description =
@@ -73,9 +48,9 @@ export default class WhatsappStatus extends AuthenticatedCommand {
       statusSpinner.start();
     }
 
-    let response: SignupStatusResponse;
+    let response: WhatsappSignup;
     try {
-      response = await apiClient.get<SignupStatusResponse>(
+      response = await apiClient.get<WhatsappSignup>(
         `/api/v1/whatsapp/signup/${encodeURIComponent(id!)}`,
       );
       statusSpinner.stop();
@@ -107,13 +82,41 @@ export default class WhatsappStatus extends AuthenticatedCommand {
       Number: response.phoneNumber,
       Status: statusColor(response.status),
       "Business account": response.businessAccountId ?? colors.dim("—"),
+      ...(response.status === "verifying" && {
+        "Code sent by": response.verificationMethod ?? colors.dim("—"),
+        "Attempts left":
+          response.verificationAttemptsRemaining ?? colors.dim("—"),
+        Code: response.verificationCode
+          ? colors.bold(response.verificationCode)
+          : colors.dim("not arrived yet"),
+      }),
       ...(response.failureReasons?.length && {
         Reasons: response.failureReasons.join("; "),
       }),
       Updated: new Date(response.updatedAt).toLocaleString(),
     });
 
-    if (response.status === "initiated" || response.status === "registering") {
+    if (response.status === "verifying") {
+      console.log();
+      if (response.verificationCode) {
+        console.log(
+          `Enter it with: ${colors.code(`sendly whatsapp verify ${response.id}`)} ${colors.dim(`(or --code ${response.verificationCode})`)}`,
+        );
+      } else {
+        console.log(
+          colors.dim(
+            `The code hasn't arrived on the number yet. A code sent by voice call is never shown here: enter it with ${colors.code(`sendly whatsapp verify ${response.id} --code <code>`)}. To get another, run ${colors.code(`sendly whatsapp resend-code ${response.id}`)} (add --verification-method voice for a call).`,
+          ),
+        );
+      }
+    } else if (response.status === "registering") {
+      console.log();
+      console.log(
+        colors.dim(
+          "The Facebook sign-in is done and WhatsApp is activating the number. Activation usually takes a few minutes but can take hours. If it hasn't finished about 6 hours after the session began, the session fails with registration_timeout and the fee is refunded. Run this command again to check.",
+        ),
+      );
+    } else if (response.status === "initiated") {
       console.log();
       console.log(
         colors.dim(

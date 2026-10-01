@@ -25,7 +25,7 @@ export default class TeamsSwitch extends AuthenticatedCommand {
   static examples = [
     "<%= config.bin %> teams switch",
     "<%= config.bin %> teams switch <org-id-or-slug>",
-    "<%= config.bin %> teams switch --clear",
+    "<%= config.bin %> teams switch clear",
   ];
 
   static args = {

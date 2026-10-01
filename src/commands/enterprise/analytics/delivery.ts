@@ -11,15 +11,14 @@ import {
 interface WorkspaceDelivery {
   workspaceId: string;
   workspaceName: string;
-  sent: number;
+  totalMessages?: number;
+  sent?: number;
   delivered: number;
-  failed: number;
+  failed?: number;
   deliveryRate: number;
 }
 
-interface DeliveryResponse {
-  workspaces: WorkspaceDelivery[];
-}
+type DeliveryResponse = WorkspaceDelivery[] | { workspaces?: WorkspaceDelivery[] };
 
 export default class AnalyticsDelivery extends AuthenticatedCommand {
   static description = "Get delivery rate analytics by workspace";
@@ -43,16 +42,21 @@ export default class AnalyticsDelivery extends AuthenticatedCommand {
       return;
     }
 
+    const rows = Array.isArray(response)
+      ? response
+      : (response.workspaces ?? []);
+
     header("Delivery Rates by Workspace");
 
     console.log();
-    table(response.workspaces, [
+    table(rows, [
       { header: "Workspace", key: "workspaceName", width: 24 },
       {
         header: "Sent",
         key: "sent",
         width: 10,
-        formatter: (v) => Number(v).toLocaleString(),
+        formatter: (v, row) =>
+          Number(v ?? row?.totalMessages ?? 0).toLocaleString(),
       },
       {
         header: "Delivered",
@@ -65,9 +69,11 @@ export default class AnalyticsDelivery extends AuthenticatedCommand {
         key: "failed",
         width: 10,
         formatter: (v) =>
-          Number(v) > 0
-            ? colors.error(Number(v).toLocaleString())
-            : colors.dim("0"),
+          v == null
+            ? colors.dim("-")
+            : Number(v) > 0
+              ? colors.error(Number(v).toLocaleString())
+              : colors.dim("0"),
       },
       {
         header: "Rate",

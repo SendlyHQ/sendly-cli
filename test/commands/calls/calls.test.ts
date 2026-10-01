@@ -589,6 +589,44 @@ describe("reportCallsError", () => {
     expect(reported().code).toBe("agent_required");
   });
 
+  it("explains a from number outside the US and Canada with its own code", async () => {
+    mockFetch.mockResolvedValueOnce(
+      fail(400, {
+        error: "from_number_not_supported",
+        message: "Calls can only be placed from numbers in the US or Canada right now.",
+      }),
+    );
+    const err = await apiClient
+      .post(CALLS_PATH, { to: "+15555550123", agentId: AGENT_ID, from: "+447700900123" })
+      .catch((e: unknown) => e);
+
+    expect(reportCallsError(err)).toBe(true);
+    const out = reported();
+    expect(out.code).toBe("from_number_not_supported");
+    expect(out.message).toBe(
+      "Calls can only be placed from numbers in the US or Canada right now.",
+    );
+    expect(String(out.hint)).toContain("--from");
+  });
+
+  it("reports the daily call limit with its own code instead of a 60-second wait", async () => {
+    mockFetch.mockResolvedValueOnce(
+      fail(429, {
+        error: "daily_call_limit",
+        message: "Today's calling limit has been reached. Try again tomorrow.",
+      }),
+    );
+    const err = await apiClient
+      .post(CALLS_PATH, { to: "+15555550123", agentId: AGENT_ID })
+      .catch((e: unknown) => e);
+
+    expect(reportCallsError(err)).toBe(true);
+    const out = reported();
+    expect(out.code).toBe("daily_call_limit");
+    expect(out.message).toBe("Today's calling limit has been reached. Try again tomorrow.");
+    expect(JSON.stringify(out)).not.toMatch(/60 seconds/);
+  });
+
   it("leaves unrelated errors to the base command", () => {
     expect(reportCallsError(new ApiError("unknown_error", "HTTP 418", 418))).toBe(
       false,

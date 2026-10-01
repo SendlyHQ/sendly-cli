@@ -4,6 +4,7 @@ import {
   apiClient,
   ApiError,
   ApiKeyRequiredError,
+  CREATE_LIVE_KEY_COMMAND,
   ForbiddenError,
   NotFoundError,
   ValidationError,
@@ -281,7 +282,7 @@ export default class RcsSend extends AuthenticatedCommand {
         );
       } else if (err instanceof ApiKeyRequiredError) {
         error("RCS messages require a live API key.", {
-          hint: "RCS delivery is never simulated on a test key — create one with `sendly keys create --type live`",
+          hint: `RCS delivery is never simulated on a test key — create one with \`${CREATE_LIVE_KEY_COMMAND}\``,
         });
       } else if (
         err instanceof ValidationError &&

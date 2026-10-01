@@ -33,7 +33,7 @@ export default class TemplatesEnhance extends AuthenticatedCommand {
   static examples = [
     '<%= config.bin %> templates enhance --text "hey come check out our sale"',
     '<%= config.bin %> templates enhance --file ./draft.txt --message-type marketing',
-    '<%= config.bin %> echo "your sale msg" | sendly templates enhance --message-type promotional',
+    'echo "your sale msg" | <%= config.bin %> templates enhance --message-type promotional',
   ];
 
   static args = {

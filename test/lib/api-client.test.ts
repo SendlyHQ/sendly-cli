@@ -36,6 +36,8 @@ import {
   isMissingScopesError,
   RateLimitError,
   InsufficientCreditsError,
+  NotFoundError,
+  ValidationError,
 } from "../../src/lib/api-client.js";
 import {
   getAuthToken,
@@ -320,7 +322,7 @@ describe("API Client", () => {
         expect(err.code).toBe("rcs_requires_live_key");
         expect(err.statusCode).toBe(403);
         expect(err.hint).toBe(
-          "Create a live key with: sendly keys create --type live",
+          'Create a live key with: sendly keys create --name "Live key" --type live',
         );
       });
 
@@ -409,6 +411,78 @@ describe("API Client", () => {
         expect((err as ApiError).details).toEqual({ field: "to" });
       }
     });
+
+    describe("an error the API words as a sentence, with no message", () => {
+      const refuse = (status: number, body: Record<string, unknown>) => {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status,
+          json: () => Promise.resolve(body),
+          headers: new Map(),
+        });
+        return apiClient.post("/api/test", {}).then(
+          () => {
+            throw new Error("expected the request to fail");
+          },
+          (e: ApiError) => e,
+        );
+      };
+
+      it("uses the sentence as the message of a 400 and keeps its code", async () => {
+        const err = await refuse(400, {
+          error: "No webhook configured. Set a webhook URL first.",
+        });
+
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.message).toBe("No webhook configured. Set a webhook URL first.");
+        expect(err.code).toBe("validation_error");
+        expect(err.body).toEqual({
+          error: "No webhook configured. Set a webhook URL first.",
+        });
+      });
+
+      it("does the same for a 403 and a 409, keeping the codes they had", async () => {
+        const forbidden = await refuse(403, {
+          error: "You must own the source workspace",
+        });
+        expect(forbidden).toBeInstanceOf(ForbiddenError);
+        expect(forbidden.message).toBe("You must own the source workspace");
+        expect(forbidden.code).toBe("You must own the source workspace");
+
+        const conflict = await refuse(409, {
+          error: "A workspace with a similar name already exists",
+        });
+        expect(conflict.message).toBe("A workspace with a similar name already exists");
+        expect(conflict.code).toBe("A workspace with a similar name already exists");
+        expect(conflict.statusCode).toBe(409);
+      });
+
+      it("still says HTTP <status> when the error is a code", async () => {
+        const err = await refuse(400, { error: "template_example_required" });
+
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.message).toBe("HTTP 400");
+      });
+
+      it("prefers the message when the API sends one", async () => {
+        const err = await refuse(400, {
+          error: "Invalid webhook data",
+          message: "URL is required",
+        });
+
+        expect(err.message).toBe("URL is required");
+      });
+
+      it("uses the sentence of a 404, and the not-found default for a code", async () => {
+        const sentence = await refuse(404, { error: "Enterprise account not found" });
+        expect(sentence).toBeInstanceOf(NotFoundError);
+        expect(sentence.message).toBe("Enterprise account not found");
+        expect(sentence.code).toBe("not_found");
+
+        const coded = await refuse(404, { error: "not_found" });
+        expect(coded.message).toBe("Resource not found");
+      });
+    });
   });
 
   describe("rate limit info", () => {
@@ -458,6 +532,56 @@ describe("API Client", () => {
 
       const result = await apiClient.get("/api/health", undefined, false);
       expect(result).toEqual({ status: "ok" });
+    });
+  });
+
+  describe("ids that would change the endpoint", () => {
+    const okResponse = () => ({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true }),
+      headers: new Map(),
+    });
+
+    it.each([
+      ["..", ".."],
+      [".", "."],
+      ["an empty id", ""],
+      ["an encoded ..", "%2E%2e"],
+    ])("refuses %s before any request", async (_label, id) => {
+      const path = `/api/v1/enterprise/workspaces/ws_1/keys/${encodeURIComponent(id).replace(/%252E/gi, "%2E")}`;
+
+      await expect(apiClient.delete(path)).rejects.toBeInstanceOf(ValidationError);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("refuses a dot-segment id in the middle of the path", async () => {
+      await expect(
+        apiClient.get(`/api/v1/contacts/lists/${encodeURIComponent("..")}/contacts`),
+      ).rejects.toThrow(/\.\./);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("refuses a dot-segment id on an upload before any request", async () => {
+      await expect(
+        apiClient.uploadFile(`/api/v1/things/${encodeURIComponent("..")}/upload`, {
+          buffer: Buffer.from("a"),
+          filename: "a.csv",
+        }),
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("sends ids that only contain dots, and query values with dots", async () => {
+      mockFetch.mockResolvedValue(okResponse());
+
+      await apiClient.delete(`/api/v1/enterprise/workspaces/ws_1/keys/${encodeURIComponent("...")}`, false);
+      await apiClient.get(`/api/v1/messages/${encodeURIComponent("msg.1")}`, { q: ".." }, false);
+
+      expect(mockFetch.mock.calls.map(([url]) => url)).toEqual([
+        "https://sendly.live/api/v1/enterprise/workspaces/ws_1/keys/...",
+        "https://sendly.live/api/v1/messages/msg.1?q=..",
+      ]);
     });
   });
 

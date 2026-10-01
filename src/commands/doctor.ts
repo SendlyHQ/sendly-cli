@@ -50,9 +50,11 @@ export default class Doctor extends BaseCommand {
 
   private results: DiagnosticResult[] = [];
   private baseUrl: BaseUrlResolution = { url: "", source: "" };
+  private jsonOutput = false;
 
   async run(): Promise<void> {
     const { flags } = await this.parse(Doctor);
+    this.jsonOutput = flags.json;
 
     if (!flags.json) {
       console.log();
@@ -140,8 +142,7 @@ export default class Doctor extends BaseCommand {
     this.results.push(result);
 
     // Print result immediately (unless in JSON mode)
-    const { flags } = this as any;
-    if (flags?.json) return;
+    if (this.jsonOutput) return;
 
     const icon =
       result.status === "ok"
@@ -167,6 +168,15 @@ export default class Doctor extends BaseCommand {
         message: "Not configured",
         details:
           "Run 'sendly login' or set SENDLY_API_KEY environment variable",
+      });
+      return;
+    }
+
+    if (token.startsWith("cli_")) {
+      this.addResult({
+        name: "API Key",
+        status: "ok",
+        message: "Using your sendly login session (test mode)",
       });
       return;
     }

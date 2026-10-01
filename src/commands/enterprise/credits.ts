@@ -12,8 +12,7 @@ import {
 
 interface WorkspaceCredits {
   balance: number;
-  reservedBalance: number;
-  availableBalance: number;
+  lifetimeCredits: number;
 }
 
 export default class EnterpriseCredits extends AuthenticatedCommand {
@@ -50,12 +49,8 @@ export default class EnterpriseCredits extends AuthenticatedCommand {
     header("Workspace Credits");
 
     keyValue({
-      Available: colors.primary(formatCredits(credits.availableBalance)),
-      Reserved:
-        credits.reservedBalance > 0
-          ? colors.warning(formatCredits(credits.reservedBalance))
-          : colors.dim("0 credits"),
-      "Total Balance": formatCredits(credits.balance),
+      Balance: colors.primary(formatCredits(credits.balance)),
+      Lifetime: formatCredits(credits.lifetimeCredits),
     });
   }
 }

@@ -4,6 +4,7 @@ import { apiClient } from "../../lib/api-client.js";
 import {
   json,
   success,
+  warn,
   colors,
   isJsonMode,
   keyValue,
@@ -24,8 +25,8 @@ export default class CampaignsCreate extends AuthenticatedCommand {
 
   static examples = [
     '<%= config.bin %> campaigns create --name "Welcome" --text "Hello {{name}}!" --list lst_xxx',
-    '<%= config.bin %> campaigns create --name "Sale" --text "50% off today!" --list lst_customers --list lst_subscribers',
-    '<%= config.bin %> campaigns create --name "OTP" --template tpl_preset_otp --list lst_xxx',
+    '<%= config.bin %> campaigns create --name "Sale" --text "50% off today!" --list lst_customers',
+    '<%= config.bin %> campaigns create --name "Promo" --template tpl_xxx --list lst_xxx',
   ];
 
   static flags = {
@@ -37,14 +38,14 @@ export default class CampaignsCreate extends AuthenticatedCommand {
     }),
     text: Flags.string({
       char: "t",
-      description: "Message text (supports {{variables}})",
+      description: "Message text ({{name}} and {{brand_name}} are filled in for each contact)",
     }),
     template: Flags.string({
-      description: "Template ID to use instead of text",
+      description: "Template ID to use instead of text (it may use only {{name}} and {{brand_name}})",
     }),
     list: Flags.string({
       char: "l",
-      description: "Contact list ID (can specify multiple)",
+      description: "Contact list ID (a campaign targets one list)",
       multiple: true,
       required: true,
     }),
@@ -55,6 +56,12 @@ export default class CampaignsCreate extends AuthenticatedCommand {
 
     if (!flags.text && !flags.template) {
       this.error("Either --text or --template is required");
+    }
+
+    if (flags.list!.length > 1) {
+      warn(
+        `A campaign targets one contact list, so only the first --list (${flags.list![0]}) is used. Run campaigns create once per list to reach the others.`,
+      );
     }
 
     const campaign = await apiClient.post<Campaign>("/api/v1/campaigns", {

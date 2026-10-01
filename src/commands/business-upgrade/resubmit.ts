@@ -7,7 +7,11 @@ import {
   resolveBaseUrl,
   getEffectiveValue,
 } from "../../lib/config.js";
-import { ApiError, AuthenticationError } from "../../lib/api-client.js";
+import {
+  ApiError,
+  AuthenticationError,
+  assertSafePath,
+} from "../../lib/api-client.js";
 import { json, success, info, isJsonMode } from "../../lib/output.js";
 
 const TEXT_FIELDS: Record<string, string> = {
@@ -106,7 +110,9 @@ export default class BusinessUpgradeResubmit extends AuthenticatedCommand {
 
     const baseUrl = resolveBaseUrl();
     const timeout = getEffectiveValue("timeout");
-    const url = `${baseUrl}/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade/resubmit`;
+    const requestPath = `/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade/resubmit`;
+    assertSafePath(requestPath);
+    const url = `${baseUrl}${requestPath}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);

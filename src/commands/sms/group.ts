@@ -12,10 +12,15 @@ import {
 } from "../../lib/output.js";
 import inquirer from "inquirer";
 
+interface GroupRecipient {
+  phoneNumber: string;
+  status: string;
+}
+
 interface GroupMessageResponse {
   id: string;
   status: string;
-  to: string[];
+  to: Array<string | GroupRecipient>;
   group_message_id?: string;
   simulated?: boolean;
 }
@@ -193,7 +198,13 @@ export default class SmsGroup extends AuthenticatedCommand {
 
       if (!isJsonMode()) {
         for (const recipient of response.to) {
-          console.log(`  ${colors.dim("To:")} ${colors.code(recipient)}`);
+          if (typeof recipient === "string") {
+            console.log(`  ${colors.dim("To:")} ${colors.code(recipient)}`);
+          } else {
+            console.log(
+              `  ${colors.dim("To:")} ${colors.code(recipient.phoneNumber)} ${formatStatus(recipient.status)}`,
+            );
+          }
         }
       }
     } catch (err) {

@@ -1,6 +1,6 @@
 import { Flags, Args } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
-import { apiClient } from "../../lib/api-client.js";
+import { apiClient, ApiError } from "../../lib/api-client.js";
 import {
   success,
   error,
@@ -81,23 +81,32 @@ export default class VerifyCheck extends AuthenticatedCommand {
     } catch (err: any) {
       checkSpinner.stop();
 
-      if (err.message?.includes("invalid_code")) {
-        const remaining = err.details?.remaining_attempts;
+      const code = err instanceof ApiError ? err.body?.error : undefined;
+
+      if (code === "invalid_code") {
+        const remaining = (err as ApiError).body?.remaining_attempts;
         error("Invalid code", {
+          code,
+          ...(typeof remaining === "number" && {
+            remaining_attempts: remaining,
+          }),
           hint: remaining
             ? `${remaining} attempt(s) remaining`
             : "Try again with the correct code",
         });
-      } else if (err.message?.includes("expired")) {
+      } else if (code === "expired") {
         error("Verification expired", {
+          code,
           hint: "Request a new verification code",
         });
-      } else if (err.message?.includes("max_attempts")) {
+      } else if (code === "max_attempts_exceeded") {
         error("Maximum attempts exceeded", {
+          code,
           hint: "Request a new verification code",
         });
-      } else if (err.message?.includes("not_found")) {
+      } else if (code === "not_found") {
         error("Verification not found", {
+          code,
           hint: "Check the verification ID is correct",
         });
       } else {

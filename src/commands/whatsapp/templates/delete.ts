@@ -17,7 +17,8 @@ interface DeleteTemplateResponse {
 }
 
 export default class WhatsappTemplatesDelete extends AuthenticatedCommand {
-  static description = "Delete a WhatsApp template";
+  static description =
+    "Delete a WhatsApp template. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner, admin or member.";
 
   static examples = [
     "<%= config.bin %> whatsapp templates delete 3f6a1c9e-0000-0000-0000-000000000000",

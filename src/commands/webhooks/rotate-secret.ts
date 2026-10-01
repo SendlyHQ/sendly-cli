@@ -69,11 +69,13 @@ export default class WebhooksRotateSecret extends AuthenticatedCommand {
       console.log();
       console.log(
         colors.warning(
-          "⚠ This will rotate the webhook secret and invalidate the old one after 24 hours.",
+          "⚠ Deliveries are signed with the new secret as soon as it is rotated, so signatures checked with the old secret will fail.",
         ),
       );
       console.log(
-        colors.dim("Make sure to update your application with the new secret."),
+        colors.dim(
+          "Let your endpoint accept both secrets while you deploy the new one.",
+        ),
       );
       console.log();
 
@@ -103,18 +105,16 @@ export default class WebhooksRotateSecret extends AuthenticatedCommand {
       }
 
       const secretValue = result.new_secret || result.secret || "";
-      const gracePeriod = result.grace_period_hours || 24;
 
       success("Webhook secret rotated", {
         "Webhook ID": result.id || args.id,
         "Secret Version": `${webhook.secret_version || 1} → ${result.new_secret_version || "new"}`,
-        "Grace Period": `${gracePeriod} hours`,
         "Rotated At": result.rotated_at || new Date().toISOString(),
       });
 
       console.log();
       warn(
-        "Copy your new webhook secret now. The old secret will expire in 24 hours!",
+        "Copy your new webhook secret now. It won't be shown again, and deliveries are already signed with it.",
       );
       codeBlock(secretValue);
 
@@ -122,11 +122,6 @@ export default class WebhooksRotateSecret extends AuthenticatedCommand {
       console.log(
         colors.dim(
           "Update your application with this new secret for webhook signature verification.",
-        ),
-      );
-      console.log(
-        colors.dim(
-          `The old secret will remain valid for ${gracePeriod} hours to allow for graceful migration.`,
         ),
       );
     } catch (err) {

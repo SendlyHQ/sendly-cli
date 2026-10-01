@@ -84,9 +84,9 @@ export default class EnterpriseTransferCredits extends AuthenticatedCommand {
     spin.start();
 
     const result = await apiClient.post<TransferResponse>(
-      `/api/v1/enterprise/workspaces/${encodeURIComponent(flags.from)}/transfer-credits`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(flags.to)}/transfer-credits`,
       {
-        targetWorkspaceId: flags.to,
+        sourceWorkspaceId: flags.from,
         amount: flags.amount,
       },
     );

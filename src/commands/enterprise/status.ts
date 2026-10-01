@@ -3,31 +3,34 @@ import { apiClient } from "../../lib/api-client.js";
 import {
   json,
   keyValue,
+  table,
   colors,
   header,
   isJsonMode,
-  formatDate,
   formatCredits,
+  formatStatus,
 } from "../../lib/output.js";
+
+interface EnterpriseWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  suspendedAt: string | null;
+  verificationStatus: string | null;
+  verificationType: string | null;
+  tollFreeNumber: string | null;
+  creditBalance: number;
+  monthlyMessageQuota: number | null;
+  messagesThisMonth: number;
+}
 
 interface EnterpriseAccount {
   id: string;
-  userId: string;
-  status: "pending" | "active" | "suspended" | "deactivated";
-  companyName: string;
   maxWorkspaces: number;
-  webhookUrl?: string;
-  webhookSecret?: string;
-  totalCreditsAllocated: number;
-  monthlyPlatformFee?: number;
-  perWorkspaceFee?: number;
-  createdAt: string;
-  activatedAt?: string;
-}
-
-interface StatusResponse {
-  account: EnterpriseAccount;
   workspaceCount: number;
+  workspaces: EnterpriseWorkspace[];
+  metadata: { webhookUrl?: string } | null;
 }
 
 export default class EnterpriseStatus extends AuthenticatedCommand {
@@ -43,42 +46,54 @@ export default class EnterpriseStatus extends AuthenticatedCommand {
   };
 
   async run(): Promise<void> {
-    const response = await apiClient.get<StatusResponse>(
+    const account = await apiClient.get<EnterpriseAccount>(
       "/api/v1/enterprise/account",
     );
 
     if (isJsonMode()) {
-      json(response);
+      json(account);
       return;
     }
 
-    const { account, workspaceCount } = response;
+    const workspaces = account.workspaces ?? [];
+    const totalCredits = workspaces.reduce(
+      (sum, workspace) => sum + Number(workspace.creditBalance || 0),
+      0,
+    );
 
     header("Enterprise Account");
 
-    const statusColor =
-      account.status === "active"
-        ? colors.success
-        : account.status === "pending"
-          ? colors.warning
-          : colors.error;
-
     keyValue({
-      Company: colors.primary(account.companyName),
-      Status: statusColor(account.status),
-      Workspaces: `${workspaceCount} / ${account.maxWorkspaces}`,
-      "Credits Allocated": formatCredits(account.totalCreditsAllocated),
-      "Platform Fee": account.monthlyPlatformFee
-        ? `$${account.monthlyPlatformFee}/mo`
-        : colors.dim("not set"),
-      "Per-Workspace Fee": account.perWorkspaceFee
-        ? `$${account.perWorkspaceFee}/mo`
-        : colors.dim("not set"),
-      "Enterprise Webhook": account.webhookUrl || colors.dim("not configured"),
-      "Activated At": account.activatedAt
-        ? formatDate(account.activatedAt)
-        : colors.dim("pending"),
-      "Created At": formatDate(account.createdAt),
+      "Account ID": colors.dim(account.id),
+      Workspaces: `${account.workspaceCount} / ${account.maxWorkspaces}`,
+      "Credits (all workspaces)": formatCredits(totalCredits),
+      "Enterprise Webhook":
+        account.metadata?.webhookUrl || colors.dim("not configured"),
     });
+
+    if (workspaces.length > 0) {
+      console.log();
+      table(workspaces, [
+        { header: "Workspace", key: "name", width: 24 },
+        {
+          header: "Status",
+          key: "status",
+          width: 12,
+          formatter: (v) => formatStatus(String(v ?? "active")),
+        },
+        {
+          header: "Verification",
+          key: "verificationStatus",
+          width: 14,
+          formatter: (v) => (v ? formatStatus(String(v)) : colors.dim("none")),
+        },
+        {
+          header: "Credits",
+          key: "creditBalance",
+          width: 12,
+          formatter: (v) => Number(v ?? 0).toLocaleString(),
+        },
+      ]);
+    }
   }
 }

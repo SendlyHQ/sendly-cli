@@ -7,25 +7,38 @@ import {
   colors,
   header,
   isJsonMode,
+  formatCredits,
 } from "../../lib/output.js";
 
 interface WorkspaceBillingItem {
-  workspaceId: string;
-  workspaceName: string;
-  creditsPurchased: number;
+  id: string;
+  name: string;
   creditsUsed: number;
-  messagesCount: number;
-  seatFee: number;
+  creditsPurchased: number;
+  creditsTransferredIn: number;
+  creditsTransferredOut: number;
+  messagesSent: number;
+  messagesDelivered: number;
+  workspaceFee: number;
+  included: boolean;
+  allocatedPlatformFee: number;
+  totalCost: number;
 }
 
 interface BillingBreakdown {
-  platformFee: number;
-  totalSeatFees: number;
-  totalCreditsPurchased: number;
-  totalAmount: number;
+  period: string;
+  includedWorkspaces: number;
+  summary: {
+    platformFee: number;
+    totalWorkspaceFees: number;
+    totalCreditsUsed: number;
+    totalCost: number;
+  };
   workspaces: WorkspaceBillingItem[];
-  page: number;
-  totalPages: number;
+}
+
+function dollars(cents: number | undefined): string {
+  return `$${(Number(cents ?? 0) / 100).toFixed(2)}`;
 }
 
 export default class EnterpriseBilling extends AuthenticatedCommand {
@@ -34,6 +47,7 @@ export default class EnterpriseBilling extends AuthenticatedCommand {
   static examples = [
     "<%= config.bin %> enterprise billing",
     "<%= config.bin %> enterprise billing --page 2",
+    "<%= config.bin %> enterprise billing --period 90d",
     "<%= config.bin %> enterprise billing --json",
   ];
 
@@ -47,6 +61,11 @@ export default class EnterpriseBilling extends AuthenticatedCommand {
       description: "Results per page",
       default: 20,
     }),
+    period: Flags.string({
+      description:
+        "Period the credits and messages cover (7d, 30d, 90d). Defaults to 30d",
+      options: ["7d", "30d", "90d"],
+    }),
   };
 
   async run(): Promise<void> {
@@ -54,7 +73,7 @@ export default class EnterpriseBilling extends AuthenticatedCommand {
 
     const response = await apiClient.get<BillingBreakdown>(
       "/api/v1/enterprise/billing/workspace-breakdown",
-      { page: flags.page, limit: flags.limit },
+      { page: flags.page, limit: flags.limit, period: flags.period },
     );
 
     if (isJsonMode()) {
@@ -62,56 +81,60 @@ export default class EnterpriseBilling extends AuthenticatedCommand {
       return;
     }
 
-    header("Billing Breakdown");
+    const summary = response.summary;
+    const workspaces = response.workspaces ?? [];
+
+    header(`Billing Breakdown (${response.period ?? flags.period ?? "30d"})`);
 
     console.log();
     console.log(
-      `  ${colors.dim("Platform Fee:")}  $${response.platformFee.toFixed(2)}/mo`,
+      `  ${colors.dim("Platform Fee:")}    ${dollars(summary?.platformFee)}/mo`,
     );
     console.log(
-      `  ${colors.dim("Seat Fees:")}     $${response.totalSeatFees.toFixed(2)}/mo`,
+      `  ${colors.dim("Workspace Fees:")}  ${dollars(summary?.totalWorkspaceFees)}/mo`,
     );
     console.log(
-      `  ${colors.dim("Credits:")}       $${response.totalCreditsPurchased.toFixed(2)}`,
+      `  ${colors.dim("Credits Used:")}    ${formatCredits(summary?.totalCreditsUsed ?? 0)}`,
     );
     console.log(
-      `  ${colors.bold("Total:")}         ${colors.primary("$" + response.totalAmount.toFixed(2))}`,
+      `  ${colors.bold("Total:")}           ${colors.primary(dollars(summary?.totalCost))}`,
     );
     console.log();
 
-    table(response.workspaces, [
-      { header: "Workspace", key: "workspaceName", width: 24 },
+    table(workspaces, [
+      { header: "Workspace", key: "name", width: 24 },
       {
         header: "Seat Fee",
-        key: "seatFee",
+        key: "workspaceFee",
         width: 10,
-        formatter: (v) => `$${Number(v).toFixed(2)}`,
+        formatter: (v, row) =>
+          row?.included ? colors.dim("included") : dollars(Number(v)),
       },
       {
         header: "Credits Bought",
         key: "creditsPurchased",
         width: 14,
-        formatter: (v) => Number(v).toLocaleString(),
+        formatter: (v) => Number(v ?? 0).toLocaleString(),
       },
       {
         header: "Credits Used",
         key: "creditsUsed",
         width: 12,
-        formatter: (v) => Number(v).toLocaleString(),
+        formatter: (v) => Number(v ?? 0).toLocaleString(),
       },
       {
         header: "Messages",
-        key: "messagesCount",
+        key: "messagesSent",
         width: 10,
-        formatter: (v) => Number(v).toLocaleString(),
+        formatter: (v) => Number(v ?? 0).toLocaleString(),
       },
     ]);
 
-    if (response.totalPages > 1) {
+    if (workspaces.length > 0 && workspaces.length === flags.limit) {
       console.log();
       console.log(
         colors.dim(
-          `  Page ${response.page} of ${response.totalPages}. Use --page to navigate.`,
+          `  Page ${flags.page}. Use --page ${flags.page + 1} to see more.`,
         ),
       );
     }

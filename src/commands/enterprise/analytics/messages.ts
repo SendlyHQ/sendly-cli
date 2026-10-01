@@ -19,7 +19,7 @@ interface MessageDataPoint {
 interface MessagesResponse {
   period: string;
   data: MessageDataPoint[];
-  totals: {
+  totals?: {
     sent: number;
     delivered: number;
     failed: number;
@@ -58,17 +58,29 @@ export default class AnalyticsMessages extends AuthenticatedCommand {
       return;
     }
 
+    const data = response.data ?? [];
+    const totals =
+      response.totals ??
+      data.reduce(
+        (sum, day) => ({
+          sent: sum.sent + Number(day.sent || 0),
+          delivered: sum.delivered + Number(day.delivered || 0),
+          failed: sum.failed + Number(day.failed || 0),
+        }),
+        { sent: 0, delivered: 0, failed: 0 },
+      );
+
     header(`Message Analytics (${flags.period})`);
 
     console.log();
     console.log(
-      `  ${colors.dim("Totals:")} ${response.totals.sent.toLocaleString()} sent, ` +
-        `${colors.success(response.totals.delivered.toLocaleString() + " delivered")}, ` +
-        `${response.totals.failed > 0 ? colors.error(response.totals.failed.toLocaleString() + " failed") : colors.dim("0 failed")}`,
+      `  ${colors.dim("Totals:")} ${totals.sent.toLocaleString()} sent, ` +
+        `${colors.success(totals.delivered.toLocaleString() + " delivered")}, ` +
+        `${totals.failed > 0 ? colors.error(totals.failed.toLocaleString() + " failed") : colors.dim("0 failed")}`,
     );
     console.log();
 
-    table(response.data, [
+    table(data, [
       { header: "Date", key: "date", width: 12 },
       {
         header: "Sent",

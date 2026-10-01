@@ -120,14 +120,17 @@ export default class VerifySend extends AuthenticatedCommand {
 
       if (code === "insufficient_credits") {
         error("Insufficient credits", {
+          code,
           hint: `Run ${colors.code("sendly credits balance")} to check your balance`,
         });
       } else if (code === "verification_required") {
         error("Business verification required", {
+          code,
           hint: "Complete verification at https://sendly.live/verify",
         });
       } else if (code === "invalid_phone_format") {
         error("Invalid phone number format", {
+          code,
           hint: "Use E.164 format: +1234567890",
         });
       } else {

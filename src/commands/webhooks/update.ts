@@ -22,7 +22,8 @@ export default class WebhooksUpdate extends AuthenticatedCommand {
     "<%= config.bin %> webhooks update whk_abc123 --url https://newdomain.com/webhook",
     "<%= config.bin %> webhooks update whk_abc123 --events message.delivered,message.failed",
     '<%= config.bin %> webhooks update whk_abc123 --description "Updated production webhook"',
-    "<%= config.bin %> webhooks update whk_abc123 --active false",
+    "<%= config.bin %> webhooks update whk_abc123 --no-active",
+    "<%= config.bin %> webhooks update whk_abc123 --active",
     "<%= config.bin %> webhooks update whk_abc123 --url https://newdomain.com/webhook --events message.sent --json",
   ];
 

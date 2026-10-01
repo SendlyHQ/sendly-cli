@@ -22,12 +22,13 @@ interface WorkspaceDetail {
     tollFreeNumber: string | null;
     businessName: string | null;
   } | null;
-  creditBalance: number;
+  credits: number;
+  creditBalance?: number;
   keyCount: number;
-  messages30d: number;
-  delivered30d: number;
-  failed30d: number;
-  deliveryRate: number;
+  messages30d?: number;
+  delivered30d?: number;
+  failed30d?: number;
+  deliveryRate?: number;
 }
 
 export default class WorkspacesGet extends AuthenticatedCommand {
@@ -65,6 +66,23 @@ export default class WorkspacesGet extends AuthenticatedCommand {
 
     const verificationStatus = workspace.verification?.status || "unverified";
 
+    const stats =
+      typeof workspace.messages30d === "number"
+        ? {
+            "Messages (30d)": workspace.messages30d.toLocaleString(),
+            "Delivered (30d)": Number(workspace.delivered30d ?? 0).toLocaleString(),
+            "Delivery Rate":
+              workspace.messages30d > 0
+                ? `${Number(
+                    workspace.deliveryRate ??
+                      (Number(workspace.delivered30d ?? 0) /
+                        workspace.messages30d) *
+                        100,
+                  ).toFixed(1)}%`
+                : colors.dim("n/a"),
+          }
+        : {};
+
     keyValue({
       ID: colors.dim(workspace.id),
       Name: workspace.name,
@@ -77,14 +95,9 @@ export default class WorkspacesGet extends AuthenticatedCommand {
             : colors.dim(verificationStatus),
       Phone: workspace.verification?.tollFreeNumber || colors.dim("not assigned"),
       Business: workspace.verification?.businessName || colors.dim("n/a"),
-      Credits: formatCredits(workspace.creditBalance),
+      Credits: formatCredits(workspace.credits ?? workspace.creditBalance),
       "API Keys": String(workspace.keyCount),
-      "Messages (30d)": workspace.messages30d.toLocaleString(),
-      "Delivered (30d)": workspace.delivered30d.toLocaleString(),
-      "Delivery Rate":
-        workspace.messages30d > 0
-          ? `${workspace.deliveryRate.toFixed(1)}%`
-          : colors.dim("n/a"),
+      ...stats,
       Created: formatDate(workspace.createdAt),
     });
   }

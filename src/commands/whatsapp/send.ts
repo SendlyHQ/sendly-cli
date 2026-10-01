@@ -54,7 +54,7 @@ function parseVariables(
 
 export default class WhatsappSend extends AuthenticatedCommand {
   static description =
-    "Send a WhatsApp message — free-form text inside the 24-hour reply window, or an approved template any time";
+    "Send a WhatsApp message: free-form text inside the 24-hour reply window, or an approved template any time. Needs the sms:send scope (not whatsapp:write) and a live API key.";
 
   static examples = [
     '<%= config.bin %> whatsapp send --to +15551234567 --from +15559876543 --text "Your table is ready!"',
@@ -178,6 +178,25 @@ export default class WhatsappSend extends AuthenticatedCommand {
             `  e.g. ${colors.code(`sendly whatsapp send --to ${flags.to} --from ${flags.from} --template <name> --language en_US`)}`,
           ),
         );
+      } else if (
+        err instanceof ApiError &&
+        err.code === "whatsapp_send_unconfirmed"
+      ) {
+        error(err.message, {
+          code: err.code,
+          hint: "It was marked failed and refunded, but it may still be delivered, so check with the recipient before sending it again, or it could arrive twice. Running the same command with the same --idempotency-key returns this answer instead of sending again.",
+        });
+      } else if (
+        err instanceof ApiError &&
+        err.code === "whatsapp_send_failed"
+      ) {
+        error(err.message, {
+          code: err.code,
+          hint:
+            err.statusCode >= 500
+              ? "Not sent, safe to send again. The credits were refunded."
+              : "The carrier refused this message, so sending it again won't help. The credits were refunded.",
+        });
       } else if (
         err instanceof ApiError &&
         err.code === "whatsapp_template_not_approved"

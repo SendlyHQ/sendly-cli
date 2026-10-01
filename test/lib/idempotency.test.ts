@@ -1,6 +1,6 @@
 /**
  * Idempotency key tests
- * Tests automatic key generation, retry reuse, rotation, and caller-supplied keys
+ * Tests automatic key generation, retry reuse, and caller-supplied keys
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -138,7 +138,7 @@ describe("Idempotency keys", () => {
       expect(keyOfCall(0)).toEqual(keyOfCall(1));
     });
 
-    it("rotates the auto-generated key when retrying after a 5xx response", async () => {
+    it("keeps the auto-generated key when retrying after a 5xx response, which the API never records", async () => {
       mockFetch
         .mockResolvedValueOnce(
           mockResponse(
@@ -159,10 +159,10 @@ describe("Idempotency keys", () => {
       const second = keyOfCall(1);
       expect(first).toMatch(KEY_PATTERN);
       expect(second).toMatch(KEY_PATTERN);
-      expect(first).not.toEqual(second);
+      expect(second).toEqual(first);
     });
 
-    it("keeps the rotated key across a subsequent network error (5xx then network error)", async () => {
+    it("keeps one key across a 5xx and then a network error", async () => {
       mockFetch
         .mockResolvedValueOnce(
           mockResponse(
@@ -183,11 +183,11 @@ describe("Idempotency keys", () => {
       const first = keyOfCall(0);
       const second = keyOfCall(1);
       const third = keyOfCall(2);
-      expect(second).not.toEqual(first);
+      expect(second).toEqual(first);
       expect(third).toEqual(second);
     });
 
-    it("rotates the auto key on 5xx for file uploads too", async () => {
+    it("keeps the auto key on 5xx for file uploads too", async () => {
       mockFetch
         .mockResolvedValueOnce(
           mockResponse(
@@ -210,7 +210,7 @@ describe("Idempotency keys", () => {
       const second = keyOfCall(1);
       expect(first).toMatch(KEY_PATTERN);
       expect(second).toMatch(KEY_PATTERN);
-      expect(first).not.toEqual(second);
+      expect(second).toEqual(first);
     });
   });
 

@@ -50,7 +50,9 @@ export default class KeysList extends AuthenticatedCommand {
     if (keys.length === 0) {
       info("No API keys found");
       console.log();
-      console.log(`  Create one with ${colors.code("sendly keys create")}`);
+      console.log(
+        `  Create one with ${colors.code('sendly keys create --name "My key"')}`,
+      );
       return;
     }
 

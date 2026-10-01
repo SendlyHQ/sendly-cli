@@ -3,32 +3,24 @@ import { AuthenticatedCommand } from "../../../lib/base-command.js";
 import { apiClient } from "../../../lib/api-client.js";
 import {
   json,
-  table,
+  keyValue,
   colors,
   header,
   isJsonMode,
   formatCredits,
 } from "../../../lib/output.js";
 
-interface CreditDataPoint {
-  date: string;
-  used: number;
-  allocated: number;
-  balance: number;
-}
-
 interface CreditsAnalyticsResponse {
   period: string;
-  data: CreditDataPoint[];
-  totals: {
-    totalUsed: number;
-    totalAllocated: number;
-    currentBalance: number;
-  };
+  totalBalance: number;
+  totalLifetime: number;
+  totalUsed: number;
+  workspaceCount: number;
 }
 
 export default class AnalyticsCredits extends AuthenticatedCommand {
-  static description = "Get credit usage analytics over time";
+  static description =
+    "Get all-time credit totals across your workspaces: used, lifetime and remaining";
 
   static examples = [
     "<%= config.bin %> enterprise analytics credits",
@@ -40,7 +32,8 @@ export default class AnalyticsCredits extends AuthenticatedCommand {
     ...AuthenticatedCommand.baseFlags,
     period: Flags.string({
       char: "p",
-      description: "Time period (7d, 30d, 90d)",
+      description:
+        "Time period (7d, 30d, 90d). The API reports all-time totals whatever the period",
       options: ["7d", "30d", "90d"],
       default: "7d",
     }),
@@ -59,39 +52,13 @@ export default class AnalyticsCredits extends AuthenticatedCommand {
       return;
     }
 
-    header(`Credit Usage (${flags.period})`);
+    header("Credit Usage (all time)");
 
-    console.log();
-    console.log(
-      `  ${colors.dim("Total Used:")} ${formatCredits(response.totals.totalUsed)}  ` +
-        `${colors.dim("Allocated:")} ${formatCredits(response.totals.totalAllocated)}  ` +
-        `${colors.dim("Balance:")} ${colors.primary(formatCredits(response.totals.currentBalance))}`,
-    );
-    console.log();
-
-    table(response.data, [
-      { header: "Date", key: "date", width: 12 },
-      {
-        header: "Used",
-        key: "used",
-        width: 12,
-        formatter: (v) => Number(v).toLocaleString(),
-      },
-      {
-        header: "Allocated",
-        key: "allocated",
-        width: 12,
-        formatter: (v) =>
-          Number(v) > 0
-            ? colors.success(`+${Number(v).toLocaleString()}`)
-            : colors.dim("0"),
-      },
-      {
-        header: "Balance",
-        key: "balance",
-        width: 12,
-        formatter: (v) => colors.primary(Number(v).toLocaleString()),
-      },
-    ]);
+    keyValue({
+      Used: formatCredits(response.totalUsed),
+      Lifetime: formatCredits(response.totalLifetime),
+      Balance: colors.primary(formatCredits(response.totalBalance)),
+      Workspaces: String(response.workspaceCount ?? 0),
+    });
   }
 }

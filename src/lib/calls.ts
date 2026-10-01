@@ -7,6 +7,7 @@
 import {
   ApiError,
   ApiKeyRequiredError,
+  CREATE_LIVE_KEY_COMMAND,
   InsufficientCreditsError,
   isMissingScopesError,
   NotFoundError,
@@ -27,6 +28,7 @@ export type CallStatus =
 
 export type CallDirection = "inbound" | "outbound";
 export type CallKind = "pstn" | "internal";
+export type CallChannel = "phone" | "whatsapp" | "browser" | (string & {});
 export type CallHandledBy = "agent" | "dashboard";
 export type CallBilling = "metered" | "settled" | "unbilled";
 export type CallRecordingStatus = "recording" | "ready" | "failed" | null;
@@ -41,6 +43,7 @@ export interface Call {
   id: string;
   object: "call";
   kind: CallKind;
+  channel?: CallChannel;
   direction: CallDirection;
   status: CallStatus;
   handledBy: CallHandledBy;
@@ -276,7 +279,7 @@ export function reportCallsError(err: unknown): boolean {
   if (err instanceof ApiKeyRequiredError && /live api key/i.test(err.message)) {
     error(err.message, {
       code: "live_key_required",
-      hint: "Test keys can read calls but not place or end them. Create a live key with `sendly keys create --type live`",
+      hint: `Test keys can read calls but not place or end them. Create a live key with \`${CREATE_LIVE_KEY_COMMAND}\``,
     });
     return true;
   }
@@ -316,46 +319,55 @@ export function reportCallsError(err: unknown): boolean {
       error(err.message, { code: "destination_not_supported" });
       return true;
     }
+    if (err.body?.error === "from_number_not_supported") {
+      error(err.message, {
+        code: "from_number_not_supported",
+        hint: "Pass a US or Canadian voice number as --from. List your voice numbers with `sendly voice numbers list`",
+      });
+      return true;
+    }
     return false;
   }
 
   if (!(err instanceof ApiError)) return false;
 
-  switch (err.code) {
+  const bodyCode = err.body?.error;
+  const code = typeof bodyCode === "string" && bodyCode ? bodyCode : err.code;
+  switch (code) {
     case "e911_required":
-      error(err.message, { code: err.code, hint: E911_HINT });
+      error(err.message, { code, hint: E911_HINT });
       return true;
     case "agent_disabled":
       error(err.message, {
-        code: err.code,
+        code,
         hint: "Switch the agent on with `sendly voice agents update <agentId> --enable`",
       });
       return true;
     case "no_voice_number":
       error(err.message, {
-        code: err.code,
+        code,
         hint: "Switch voice on for a number with `sendly voice numbers update <number> --enable`, or in the dashboard under Calls → Settings",
       });
       return true;
     case "lines_busy":
       error(err.message, {
-        code: err.code,
+        code,
         hint: "Wait for a call to end, or retry in a moment",
       });
       return true;
     case "daily_call_limit":
-      error(err.message, { code: err.code });
+      error(err.message, { code });
       return true;
     case "voice_unavailable":
     case "agents_unavailable":
       error(err.message, {
-        code: err.code,
+        code,
         hint: "Try again later or check https://status.sendly.live",
       });
       return true;
     case "idempotency_key_mismatch":
       error(err.message, {
-        code: err.code,
+        code,
         hint: "An idempotency key can only replay an identical request; use a new key for a changed body",
       });
       return true;

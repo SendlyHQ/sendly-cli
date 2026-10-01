@@ -4,7 +4,11 @@
  * `sendly voice` commands (numbers, agents, voices)
  */
 
-import { ApiError, ApiKeyRequiredError } from "./api-client.js";
+import {
+  ApiError,
+  ApiKeyRequiredError,
+  CREATE_LIVE_KEY_COMMAND,
+} from "./api-client.js";
 import { reportCallsError } from "./calls.js";
 import { colors, error, isJsonMode } from "./output.js";
 
@@ -378,7 +382,7 @@ export function reportVoiceError(
       if (err instanceof ApiKeyRequiredError) {
         error(err.message, {
           code,
-          hint: "Test keys can read voice settings but not change them. Create a live key with `sendly keys create --type live`",
+          hint: `Test keys can read voice settings but not change them. Create a live key with \`${CREATE_LIVE_KEY_COMMAND}\``,
         });
         return true;
       }

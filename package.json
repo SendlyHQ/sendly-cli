@@ -79,7 +79,7 @@
         "description": "Browse, search, and buy phone numbers across supported countries"
       },
       "whatsapp": {
-        "description": "Connect WhatsApp senders, manage templates and profiles, and send messages"
+        "description": "Connect WhatsApp senders, manage templates, profiles, ice breakers, commands and calling, and send messages"
       },
       "rcs": {
         "description": "Register an RCS agent, send RCS messages with rich cards and suggestion chips, list agents and check recipient capability"

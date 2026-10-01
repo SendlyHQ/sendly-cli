@@ -33,6 +33,10 @@ interface CreditsResponse {
   availableBalance: number;
 }
 
+interface AccountResponse {
+  organization: { id: string; name: string; isPersonal: boolean } | null;
+}
+
 export default class CreditsTransfer extends AuthenticatedCommand {
   static description = "Transfer credits between workspaces";
 
@@ -64,6 +68,19 @@ export default class CreditsTransfer extends AuthenticatedCommand {
     const currentOrg = getCurrentOrg();
     if (!currentOrg) {
       this.error("No workspace selected. Run 'sendly teams switch' first.");
+    }
+
+    const { organization: source } =
+      await apiClient.get<AccountResponse>("/api/v1/account");
+    if (!source) {
+      this.error(
+        "The API key in use isn't scoped to a workspace, so it can't transfer credits. Use a key created in the workspace you are transferring from.",
+      );
+    }
+    if (source.id !== currentOrg.id) {
+      this.error(
+        `The API key in use belongs to ${source.name}, so the credits would come out of ${source.name}, not the selected workspace ${currentOrg.name}. Select ${source.name} with 'sendly teams switch', or use a key from ${currentOrg.name}.`,
+      );
     }
 
     const orgs = await apiClient.get<Organization[]>("/api/organizations");
@@ -156,7 +173,7 @@ export default class CreditsTransfer extends AuthenticatedCommand {
     spin.start();
 
     const result = await apiClient.post<TransferResponse>(
-      `/api/organizations/${encodeURIComponent(currentOrg.id)}/transfer-credits`,
+      "/api/v1/credits/transfer",
       {
         targetOrganizationId: targetOrgId,
         amount,

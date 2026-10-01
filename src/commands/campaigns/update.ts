@@ -39,14 +39,14 @@ export default class CampaignsUpdate extends AuthenticatedCommand {
     }),
     text: Flags.string({
       char: "t",
-      description: "Message text (supports {{variables}})",
+      description: "Message text ({{name}} and {{brand_name}} are filled in for each contact)",
     }),
     list: Flags.string({
       char: "l",
       description: "Contact list ID",
     }),
     template: Flags.string({
-      description: "Template ID",
+      description: "Template ID (it may use only {{name}} and {{brand_name}})",
     }),
   };
 

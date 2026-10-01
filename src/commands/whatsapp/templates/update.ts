@@ -7,6 +7,10 @@ import {
   ValidationError,
 } from "../../../lib/api-client.js";
 import {
+  TEMPLATE_ERROR_HINTS,
+  templateErrorCode,
+} from "../../../lib/whatsapp-templates.js";
+import {
   success,
   error,
   json,
@@ -82,7 +86,7 @@ function parseKeyValuePairs(
 
 export default class WhatsappTemplatesUpdate extends AuthenticatedCommand {
   static description =
-    "Edit an approved or rejected WhatsApp template and resubmit it to Meta for review";
+    "Edit an approved or rejected WhatsApp template and resubmit it to Meta for review. The category can't be changed. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner, admin or member.";
 
   static examples = [
     '<%= config.bin %> whatsapp templates update 3f6a1c9e-0000-0000-0000-000000000000 --body "Hi {{1}}, your order shipped!" --example 1=TinyFat',
@@ -106,7 +110,8 @@ export default class WhatsappTemplatesUpdate extends AuthenticatedCommand {
       description: 'New footer text (pass "" to remove it)',
     }),
     header: Flags.string({
-      description: 'New header text (pass "" to remove it)',
+      description:
+        'New header text (pass "" to remove it); fixed text, no {{n}} variables',
     }),
     button: Flags.string({
       description:
@@ -204,10 +209,17 @@ export default class WhatsappTemplatesUpdate extends AuthenticatedCommand {
         error("Template not found", {
           hint: "Run `sendly whatsapp templates list` to see template ids",
         });
-      } else if (err instanceof ValidationError && err.message === "HTTP 400") {
-        error("The template failed validation checks", {
-          hint: "Every {{n}} needs an --example n=value; authentication templates can't contain links and need an otp button",
-        });
+      } else if (err instanceof ValidationError) {
+        const code = templateErrorCode(err);
+        error(
+          err.message === "HTTP 400"
+            ? "The template failed validation checks"
+            : err.message,
+          {
+            code,
+            hint: TEMPLATE_ERROR_HINTS[code] ?? "Every {{n}} needs an --example n=value; authentication templates can't contain links and need an otp button",
+          },
+        );
       } else {
         throw err;
       }

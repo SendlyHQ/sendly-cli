@@ -6,6 +6,10 @@ import {
   ValidationError,
 } from "../../../lib/api-client.js";
 import {
+  TEMPLATE_ERROR_HINTS,
+  templateErrorCode,
+} from "../../../lib/whatsapp-templates.js";
+import {
   success,
   error,
   warn,
@@ -101,7 +105,7 @@ function bodyPlaceholders(body: string): number[] {
 
 export default class WhatsappTemplatesCreate extends AuthenticatedCommand {
   static description =
-    "Create a WhatsApp template and submit it to Meta for review";
+    "Create a WhatsApp template and submit it to Meta for review. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner, admin or member.";
 
   static examples = [
     '<%= config.bin %> whatsapp templates create --sender +15551234567 --name order_shipped --language en_US --category utility --body "Hi {{1}}, order {{2}} shipped!" --example 1=TinyFat --example 2=4821',
@@ -129,7 +133,7 @@ export default class WhatsappTemplatesCreate extends AuthenticatedCommand {
     }),
     category: Flags.string({
       char: "c",
-      description: "Template category",
+      description: "Template category (required, no default; it can't be changed later)",
       options: ["authentication", "utility", "marketing"],
       required: true,
     }),
@@ -142,7 +146,7 @@ export default class WhatsappTemplatesCreate extends AuthenticatedCommand {
       description: "Footer text (optional)",
     }),
     header: Flags.string({
-      description: "Header text (optional)",
+      description: "Header text (optional); fixed text, no {{n}} variables",
     }),
     button: Flags.string({
       description:
@@ -253,10 +257,17 @@ export default class WhatsappTemplatesCreate extends AuthenticatedCommand {
         error(err.message, {
           hint: "Pick a different name, or edit the existing template with `sendly whatsapp templates update`",
         });
-      } else if (err instanceof ValidationError && err.message === "HTTP 400") {
-        error("The template failed validation checks", {
-          hint: "Every {{n}} needs an --example n=value; authentication templates can't contain links and need an otp button; names can't start with test/sample/demo",
-        });
+      } else if (err instanceof ValidationError) {
+        const code = templateErrorCode(err);
+        error(
+          err.message === "HTTP 400"
+            ? "The template failed validation checks"
+            : err.message,
+          {
+            code,
+            hint: TEMPLATE_ERROR_HINTS[code] ?? "Every {{n}} needs an --example n=value; authentication templates can't contain links and need an otp button; names can't start with test/sample/demo",
+          },
+        );
       } else if (err.message?.includes("connected to WhatsApp")) {
         error(err.message, {
           hint: `Connect it first: sendly whatsapp connect --number ${flags.sender}`,

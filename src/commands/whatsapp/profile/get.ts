@@ -68,8 +68,8 @@ export default class WhatsappProfileGet extends AuthenticatedCommand {
         this.exit(1);
       }
       if (err instanceof NotFoundError) {
-        error("WhatsApp isn't available on your workspace yet.", {
-          hint: "WhatsApp is rolling out gradually — contact support@sendly.live for early access.",
+        error("WhatsApp isn't enabled for your account yet.", {
+          hint: "WhatsApp is enabled per person (the user who owns the API key, not the workspace) and is rolling out gradually. Contact support@sendly.live for early access.",
         });
         this.exit(1);
       }

@@ -12,9 +12,10 @@ import {
 
 interface WebhookResponse {
   url: string;
-  secret: string;
-  events: string[];
-  isActive: boolean;
+  events: string[] | null;
+  workspaces: string[] | null;
+  signingSecret?: string;
+  secret?: string;
 }
 
 export default class EnterpriseWebhooksSet extends AuthenticatedCommand {
@@ -56,18 +57,16 @@ export default class EnterpriseWebhooksSet extends AuthenticatedCommand {
 
     success("Enterprise webhook configured", {
       URL: response.url,
-      Events: response.events.length > 0
+      Events: response.events?.length
         ? response.events.join(", ")
         : colors.dim("all events"),
-      Status: response.isActive
-        ? colors.success("active")
-        : colors.warning("inactive"),
     });
 
-    if (response.secret) {
+    const secret = response.signingSecret ?? response.secret;
+    if (secret) {
       console.log();
       warn("Save the webhook secret — it won't be shown again!");
-      codeBlock(response.secret);
+      codeBlock(secret);
     }
   }
 }

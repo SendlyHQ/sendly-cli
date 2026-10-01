@@ -13,16 +13,15 @@ import {
 interface ApiKey {
   id: string;
   name: string;
-  prefix: string;
+  keyPrefix: string;
   type: "test" | "live";
-  isActive: boolean;
-  lastUsedAt?: string;
+  scopes?: string[];
+  isActive?: boolean;
+  lastUsedAt?: string | null;
   createdAt: string;
 }
 
-interface KeysResponse {
-  keys: ApiKey[];
-}
+type KeysResponse = ApiKey[] | { keys?: ApiKey[] };
 
 export default class EnterpriseKeysList extends AuthenticatedCommand {
   static description = "List API keys for an enterprise workspace";
@@ -50,22 +49,24 @@ export default class EnterpriseKeysList extends AuthenticatedCommand {
       `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}/keys`,
     );
 
+    const keys = Array.isArray(response) ? response : (response.keys ?? []);
+
     if (isJsonMode()) {
-      json(response.keys);
+      json(keys);
       return;
     }
 
-    if (response.keys.length === 0) {
+    if (keys.length === 0) {
       info("No API keys found for this workspace");
       console.log();
       console.log(
-        `  Create one with ${colors.code(`sendly enterprise keys create ${args.workspaceId}`)}`,
+        `  Create one with ${colors.code(`sendly enterprise keys create ${args.workspaceId} --name "Production"`)}`,
       );
       return;
     }
 
     console.log();
-    table(response.keys, [
+    table(keys, [
       { header: "Name", key: "name", width: 20 },
       {
         header: "Key ID",
@@ -75,7 +76,7 @@ export default class EnterpriseKeysList extends AuthenticatedCommand {
       },
       {
         header: "Prefix",
-        key: "prefix",
+        key: "keyPrefix",
         width: 16,
         formatter: (v) => colors.code(String(v)),
       },
@@ -91,7 +92,7 @@ export default class EnterpriseKeysList extends AuthenticatedCommand {
         key: "isActive",
         width: 10,
         formatter: (v) =>
-          v ? colors.success("active") : colors.error("revoked"),
+          v === false ? colors.error("revoked") : colors.success("active"),
       },
       {
         header: "Last Used",

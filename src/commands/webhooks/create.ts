@@ -63,8 +63,13 @@ export default class WebhooksCreate extends AuthenticatedCommand {
 
     const testUrlPatterns = ["localhost", "127.0.0.1", ".ngrok.", ".loca.lt", "webhook.site"];
     const isTestUrl = testUrlPatterns.some((p) => flags.url.toLowerCase().includes(p));
-    if (!flags.url.startsWith("https://") && !isTestUrl) {
-      this.error("Webhook URL must use HTTPS. Use http:// only for local development URLs (localhost, ngrok, etc.).");
+    if (
+      flags.url.toLowerCase().startsWith("http://") ||
+      (!flags.url.startsWith("https://") && !isTestUrl)
+    ) {
+      this.error(
+        "Webhook URL must use HTTPS: the API refuses http:// URLs, local ones included. To receive events on this machine, use `sendly webhooks listen`.",
+      );
     }
 
     const events = flags.events.split(",").map((e) => e.trim());

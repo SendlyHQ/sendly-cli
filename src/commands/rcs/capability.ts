@@ -3,6 +3,7 @@ import { AuthenticatedCommand } from "../../lib/base-command.js";
 import {
   apiClient,
   ApiKeyRequiredError,
+  CREATE_LIVE_KEY_COMMAND,
   NotFoundError,
   ValidationError,
 } from "../../lib/api-client.js";
@@ -78,7 +79,7 @@ export default class RcsCapability extends AuthenticatedCommand {
       }
       if (err instanceof ApiKeyRequiredError) {
         error("RCS capability checks require a live API key.", {
-          hint: "The check reaches the carrier network, so test keys can't run it — create one with `sendly keys create --type live`",
+          hint: `The check reaches the carrier network, so test keys can't run it — create one with \`${CREATE_LIVE_KEY_COMMAND}\``,
         });
         this.exit(1);
       }

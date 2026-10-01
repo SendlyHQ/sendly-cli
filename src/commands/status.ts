@@ -1,5 +1,5 @@
 import { AuthenticatedCommand } from "../lib/base-command.js";
-import { apiClient } from "../lib/api-client.js";
+import { apiClient, CREATE_LIVE_KEY_COMMAND } from "../lib/api-client.js";
 import { colors, json, isJsonMode, formatRelativeTime } from "../lib/output.js";
 import { getConfigValue } from "../lib/config.js";
 
@@ -64,10 +64,11 @@ export default class Status extends AuthenticatedCommand {
         }>("/api/v1/account/credits")
         .catch(() => ({ balance: 0, reservedBalance: 0, availableBalance: 0 })),
       apiClient
-        .get<{ messages: any[]; total: number }>("/api/v1/messages", {
-          limit: 5,
-        })
-        .catch(() => ({ messages: [], total: 0 })),
+        .get<{ data: any[]; pagination: { total: number } }>(
+          "/api/v1/messages",
+          { limit: 5 },
+        )
+        .catch(() => ({ data: [], pagination: { total: 0 } })),
       apiClient.get<any[]>("/api/v1/webhooks").catch(() => []),
       apiClient
         .get<{ keys: any[] }>("/api/v1/account/keys")
@@ -227,9 +228,9 @@ export default class Status extends AuthenticatedCommand {
     console.log();
 
     // Recent Activity
-    if (messages.messages && messages.messages.length > 0) {
+    if (messages.data && messages.data.length > 0) {
       console.log(colors.bold("  Recent Messages"));
-      messages.messages.slice(0, 3).forEach((msg: any) => {
+      messages.data.slice(0, 3).forEach((msg: any) => {
         const msgStatus = msg.status || "unknown";
         const statusIcon =
           msgStatus === "delivered"
@@ -254,7 +255,11 @@ export default class Status extends AuthenticatedCommand {
     if (status?.nextSteps && status.nextSteps.length > 0) {
       console.log(colors.bold(colors.warning("  Next Steps")));
       status.nextSteps.forEach((step, i) => {
-        console.log(`    ${colors.warning(`${i + 1}.`)} ${step}`);
+        const runnable = step.replace(
+          "live API key with 'sendly keys create'",
+          `live API key with '${CREATE_LIVE_KEY_COMMAND}'`,
+        );
+        console.log(`    ${colors.warning(`${i + 1}.`)} ${runnable}`);
       });
       console.log();
     }

@@ -7,7 +7,11 @@ import {
   resolveBaseUrl,
   getEffectiveValue,
 } from "../../lib/config.js";
-import { ApiError, AuthenticationError } from "../../lib/api-client.js";
+import {
+  ApiError,
+  AuthenticationError,
+  assertSafePath,
+} from "../../lib/api-client.js";
 import { json, info, success, isJsonMode } from "../../lib/output.js";
 
 interface StartUpgradeResponse {
@@ -142,7 +146,9 @@ export default class BusinessUpgradeStart extends AuthenticatedCommand {
 
     const baseUrl = resolveBaseUrl();
     const timeout = getEffectiveValue("timeout");
-    const url = `${baseUrl}/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade`;
+    const requestPath = `/api/v1/workspaces/${encodeURIComponent(flags.workspace)}/upgrade`;
+    assertSafePath(requestPath);
+    const url = `${baseUrl}${requestPath}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);

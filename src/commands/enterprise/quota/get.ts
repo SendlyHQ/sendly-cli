@@ -7,13 +7,13 @@ import {
   colors,
   header,
   isJsonMode,
+  formatDate,
 } from "../../../lib/output.js";
 
 interface QuotaSettings {
-  dailyMessageQuota: number | null;
   monthlyMessageQuota: number | null;
-  messagesThisDay: number;
   messagesThisMonth: number;
+  quotaResetAt: string | null;
 }
 
 export default class QuotaGet extends AuthenticatedCommand {
@@ -50,14 +50,13 @@ export default class QuotaGet extends AuthenticatedCommand {
     header("Workspace Quota");
 
     keyValue({
-      "Daily Limit": quota.dailyMessageQuota !== null
-        ? quota.dailyMessageQuota.toLocaleString()
-        : colors.dim("unlimited"),
-      "Daily Used": `${(quota.messagesThisDay || 0).toLocaleString()}${quota.dailyMessageQuota ? ` / ${quota.dailyMessageQuota.toLocaleString()}` : ""}`,
-      "Monthly Limit": quota.monthlyMessageQuota !== null
+      "Monthly Limit": quota.monthlyMessageQuota != null
         ? quota.monthlyMessageQuota.toLocaleString()
         : colors.dim("unlimited"),
       "Monthly Used": `${(quota.messagesThisMonth || 0).toLocaleString()}${quota.monthlyMessageQuota ? ` / ${quota.monthlyMessageQuota.toLocaleString()}` : ""}`,
+      "Resets At": quota.quotaResetAt
+        ? formatDate(quota.quotaResetAt)
+        : colors.dim("not scheduled"),
     });
   }
 }

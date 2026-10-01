@@ -19,23 +19,30 @@ export interface OnboardingStatus {
   recommendedRoute: string;
 }
 
-export interface QuickStartResponse {
-  success: boolean;
-  type: string;
-  apiKey: {
-    id: string;
-    key: string;
-    name: string;
-    type: "test" | "live";
-  };
-  message: string;
-  testNumbers: Array<{
-    number: string;
-    behavior: string;
-  }>;
-  nextSteps: string[];
-  warning: string;
+interface CreatedApiKey {
+  id: string;
+  name: string;
+  key: string;
+  keyPrefix: string;
+  type: "test" | "live";
 }
+
+const DEVELOPMENT_KEY_NAME = "CLI Development Key";
+
+const SANDBOX_NUMBERS = [
+  { number: "+15005550000", behavior: "Instant success" },
+  { number: "+15005550001", behavior: "Invalid number" },
+  { number: "+15005550002", behavior: "Unroutable" },
+  { number: "+15005550003", behavior: "Queue full" },
+  { number: "+15005550004", behavior: "Rate limited" },
+  { number: "+15005550006", behavior: "Carrier violation" },
+];
+
+const NEXT_STEPS = [
+  'Try: sendly sms send --to +15005550000 --text "Hello from CLI!"',
+  "For production messaging, run: sendly onboarding",
+  "View API key in dashboard: https://sendly.live/dashboard/keys",
+];
 
 /**
  * Check if user should be offered CLI quick-start
@@ -111,36 +118,41 @@ async function runQuickStart(): Promise<boolean> {
   quickStartSpinner.start();
 
   try {
-    const result = await apiClient.post<QuickStartResponse>("/api/cli/quick-start", {
-      intent: "development",
+    const key = await apiClient.post<CreatedApiKey>("/api/v1/account/keys", {
+      name: DEVELOPMENT_KEY_NAME,
+      type: "test",
     });
 
     quickStartSpinner.succeed("Development environment created!");
 
     // Store the API key for immediate use
-    setApiKey(result.apiKey.key);
+    setApiKey(key.key);
 
     console.log();
     success("Ready to code! 🚀", {
-      "API Key": result.apiKey.name,
+      "API Key": key.name,
       "Environment": colors.warning("test"),
-      "Key Type": result.apiKey.type,
+      "Key Type": key.type,
     });
 
     console.log();
     console.log(colors.bold("Test Numbers:"));
-    result.testNumbers.forEach(({ number, behavior }) => {
+    SANDBOX_NUMBERS.forEach(({ number, behavior }) => {
       console.log(`  ${colors.primary(number)} - ${colors.dim(behavior)}`);
     });
 
     console.log();
     console.log(colors.bold("Next Steps:"));
-    result.nextSteps.forEach((step, i) => {
+    NEXT_STEPS.forEach((step, i) => {
       console.log(`  ${i + 1}. ${step}`);
     });
 
     console.log();
-    console.log(colors.warning("⚠️ " + result.warning));
+    console.log(
+      colors.warning(
+        "⚠️ This API key will only be shown once. Store it securely.",
+      ),
+    );
 
     return true;
   } catch (err) {

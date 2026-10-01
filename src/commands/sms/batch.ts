@@ -491,8 +491,8 @@ export default class SmsBatch extends AuthenticatedCommand {
     uploadId?: string,
   ): Promise<void> {
     // Check batch size
-    if (messages.length > 1000) {
-      error("Batch size cannot exceed 1000 messages", {
+    if (messages.length > 10000) {
+      error("Batch size cannot exceed 10,000 messages", {
         hint: "Split your messages into smaller batches",
       });
       this.exit(1);
