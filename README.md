@@ -546,7 +546,9 @@ sendly numbers release num_abc123
 
 Paid purchases are scheduled to release at the end of the billing period (undo
 with `sendly numbers update <id> --keep`); everything else releases immediately.
-Add `--yes` to skip the confirmation prompt.
+Add `--yes` to skip the confirmation prompt. Releasing needs a live API key or a
+`sendly login` session (a test key gets `403 live_key_required`), and in a team
+workspace the owner or admin role (otherwise `403 insufficient_permission`).
 
 ### 10DLC Commands
 
@@ -1070,7 +1072,8 @@ Calls placed to WhatsApp users from your numbers are dashboard only for now.
 
 Place and manage phone calls handled by your AI agents. `calls list`,
 `calls get` and `calls recording` work with any API key that has the
-`calls:read` scope (test keys included) or a `sendly login` session. Placing
+`calls:read` scope or a `sendly login` session. Calls are live data, so a test
+key lists none and gets `call_not_found` for a call or its recording. Placing
 and ending calls (`calls create`, `calls hangup`) needs a live API key with
 `calls:write`, a US or Canadian number that has voice switched on and a
 registered emergency address for that number. Voice is being enabled
@@ -1607,6 +1610,7 @@ sendly enterprise workspaces get 3d1f8a2b-6c4e-4f7a-9b0d-2e5c7a9f1b3d
 sendly enterprise workspaces suspend 3d1f8a2b-6c4e-4f7a-9b0d-2e5c7a9f1b3d --reason "Policy violation"
 sendly enterprise workspaces resume 3d1f8a2b-6c4e-4f7a-9b0d-2e5c7a9f1b3d
 sendly enterprise workspaces delete 3d1f8a2b-6c4e-4f7a-9b0d-2e5c7a9f1b3d --yes
+sendly enterprise workspaces delete 3d1f8a2b-6c4e-4f7a-9b0d-2e5c7a9f1b3d --yes --release-numbers
 
 # Provision a workspace that inherits a verified workspace's verification
 sendly enterprise provision --name "Acme Corp" --inherit-from 3d1f8a2b-6c4e-4f7a-9b0d-2e5c7a9f1b3d
@@ -1691,6 +1695,10 @@ sendly business-upgrade disposition --workspace ws_abc --disposition released
 ```
 
 `--brn-type` is one of `EIN`, `SSN`, `DUNS`, `CRA`, `VAT`, `LEI`, `OTHER`. `--disposition moved` also needs `--target-workspace`.
+
+You must own the workspace. With a `sendly login` session that is all. An API key also has to belong to that workspace (a key created without one counts as your personal workspace's); otherwise every command returns `403 forbidden`. `start`, `resubmit`, `cancel` and `disposition` change your carrier setup, so they also need a live key (`403 live_key_required`) with the `numbers:write` scope (`403 insufficient_permissions`). An enterprise master key can act on any workspace you own.
+
+A `released` disposition is refused with `409 number_in_use` while another workspace still uses the old number; choose `moved` instead. Once a choice is recorded, another one gets `409 already_disposed`.
 
 ### Countries
 

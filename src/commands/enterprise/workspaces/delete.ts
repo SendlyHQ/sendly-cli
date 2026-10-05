@@ -17,6 +17,7 @@ export default class WorkspacesDelete extends AuthenticatedCommand {
   static examples = [
     "<%= config.bin %> enterprise workspaces delete org_abc123",
     "<%= config.bin %> enterprise workspaces delete org_abc123 --yes",
+    "<%= config.bin %> enterprise workspaces delete org_abc123 --release-numbers",
   ];
 
   static args = {
@@ -33,6 +34,11 @@ export default class WorkspacesDelete extends AuthenticatedCommand {
       description: "Skip confirmation prompt",
       default: false,
     }),
+    "release-numbers": Flags.boolean({
+      description:
+        "Release the workspace's phone numbers with it. Without this, a workspace that still has numbers is not deleted",
+      default: false,
+    }),
   };
 
   async run(): Promise<void> {
@@ -45,6 +51,13 @@ export default class WorkspacesDelete extends AuthenticatedCommand {
           "  This will permanently delete the workspace and all its data.",
         ),
       );
+      if (flags["release-numbers"]) {
+        console.log(
+          colors.error(
+            "  Its phone numbers will be released. Ported numbers are never released this way.",
+          ),
+        );
+      }
       console.log();
 
       const { confirm } = await inquirer.prompt([
@@ -65,8 +78,9 @@ export default class WorkspacesDelete extends AuthenticatedCommand {
     const spin = spinner("Deleting workspace...");
     spin.start();
 
+    const releaseQuery = flags["release-numbers"] ? "?release_numbers=true" : "";
     await apiClient.delete(
-      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}`,
+      `/api/v1/enterprise/workspaces/${encodeURIComponent(args.workspaceId)}${releaseQuery}`,
     );
 
     spin.succeed("Workspace deleted");

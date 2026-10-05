@@ -18,6 +18,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import WorkspacesGet from "../../../src/commands/enterprise/workspaces/get.js";
+import WorkspacesDelete from "../../../src/commands/enterprise/workspaces/delete.js";
 import { setOutputFormat } from "../../../src/lib/output.js";
 import { respond, runCommand } from "../../helpers/run-command.js";
 
@@ -75,5 +76,39 @@ describe("sendly enterprise workspaces get", () => {
     expect(run.exitCode).toBeUndefined();
     expect(run.stdout).toMatch(/Messages \(30d\)\s+1,200/);
     expect(run.stdout).toContain("99.0%");
+  });
+});
+
+describe("sendly enterprise workspaces delete", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+    setOutputFormat("human");
+  });
+
+  afterEach(() => {
+    setOutputFormat("human");
+  });
+
+  it("deletes without releasing numbers by default", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, { success: true }));
+
+    const run = await runCommand(WorkspacesDelete, ["org_one", "--yes"]);
+
+    expect(run.exitCode).toBeUndefined();
+    const url = String(mockFetch.mock.calls[0][0]);
+    expect(mockFetch.mock.calls[0][1].method).toBe("DELETE");
+    expect(url).toContain("/api/v1/enterprise/workspaces/org_one");
+    expect(url).not.toContain("release_numbers");
+  });
+
+  it("passes release_numbers=true with --release-numbers", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, { success: true }));
+
+    const run = await runCommand(WorkspacesDelete, ["org_one", "--yes", "--release-numbers"]);
+
+    expect(run.exitCode).toBeUndefined();
+    const url = new URL(String(mockFetch.mock.calls[0][0]));
+    expect(url.pathname).toBe("/api/v1/enterprise/workspaces/org_one");
+    expect(url.searchParams.get("release_numbers")).toBe("true");
   });
 });
