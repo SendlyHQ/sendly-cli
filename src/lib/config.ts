@@ -545,6 +545,15 @@ export function getAuthToken(): string | undefined {
   return undefined;
 }
 
+export function getSessionToken(): string | undefined {
+  const accessToken = config.get("accessToken");
+  const expiresAt = config.get("tokenExpiresAt");
+  if (accessToken && expiresAt && Date.now() < expiresAt) {
+    return accessToken;
+  }
+  return undefined;
+}
+
 export function getStoredAccessToken(): string | undefined {
   return config.get("accessToken") || undefined;
 }

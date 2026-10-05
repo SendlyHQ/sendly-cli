@@ -52,6 +52,8 @@ export default class KeysCreate extends AuthenticatedCommand {
         name: flags.name,
         type: flags.type,
       },
+      true,
+      { preferSession: flags.type === "live" },
     );
 
     if (isJsonMode()) {

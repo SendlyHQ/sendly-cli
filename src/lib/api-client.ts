@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import {
   getAuthToken,
+  getSessionToken,
   getStoredAccessToken,
   getEffectiveValue,
   isProductionBaseUrl,
@@ -287,8 +288,18 @@ class ApiClient {
     throw new AuthenticationError();
   }
 
+  private async sessionAuth(): Promise<string | undefined> {
+    const session = getSessionToken();
+    if (session) return session;
+    if (getStoredAccessToken()?.startsWith("cli_") && (await this.refreshTokens())) {
+      return getSessionToken();
+    }
+    return undefined;
+  }
+
   private async getHeaders(
     requireAuth: boolean = true,
+    preferSession: boolean = false,
   ): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -297,7 +308,10 @@ class ApiClient {
     };
 
     if (requireAuth) {
-      headers["Authorization"] = `Bearer ${await this.ensureAuth()}`;
+      const token =
+        (preferSession && (await this.sessionAuth())) ||
+        (await this.ensureAuth());
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const orgId = getEffectiveValue("currentOrgId");
@@ -430,6 +444,7 @@ class ApiClient {
       autoIdempotencyKey?: boolean;
       retry?: boolean;
       onStatus?: (status: number) => void;
+      preferSession?: boolean;
     } = {},
   ): Promise<T> {
     const { body, query, requireAuth = true } = options;
@@ -461,7 +476,10 @@ class ApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-        const headers = await this.getHeaders(requireAuth);
+        const headers = await this.getHeaders(
+          requireAuth,
+          options.preferSession,
+        );
         if (idempotencyKey) {
           headers["Idempotency-Key"] = idempotencyKey;
         }
@@ -672,6 +690,7 @@ class ApiClient {
       autoIdempotencyKey?: boolean;
       retry?: boolean;
       onStatus?: (status: number) => void;
+      preferSession?: boolean;
     } = {},
   ): Promise<T> {
     return this.request<T>("POST", path, { body, requireAuth, ...options });
