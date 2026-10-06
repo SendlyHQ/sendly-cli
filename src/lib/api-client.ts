@@ -634,6 +634,29 @@ class ApiClient {
         // instead of always steering the user to buy credits.
         if (error === "payment_method_required")
           throw new PaymentMethodRequiredError(message);
+        if (error === "payment_failed")
+          throw new ApiError(
+            error,
+            message,
+            402,
+            undefined,
+            "Update your card at https://sendly.live/billing, then try again",
+          );
+        if (error === "payment_requires_authentication") {
+          const checkoutUrl =
+            typeof data?.checkoutUrl === "string" && data.checkoutUrl
+              ? data.checkoutUrl
+              : undefined;
+          throw new ApiError(
+            error,
+            message,
+            402,
+            checkoutUrl ? { checkoutUrl } : undefined,
+            checkoutUrl
+              ? "Open checkoutUrl in a browser to confirm the payment with your bank"
+              : "Try again in a moment, or use a different card",
+          );
+        }
         throw new InsufficientCreditsError(message);
       case 404:
         // If the server sent neither a message nor a sentence, use

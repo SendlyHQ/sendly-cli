@@ -629,7 +629,7 @@ sendly sms send --to "+15125550123" --text "Hi!" --from "+15125550188"
 Apply for a US short code, a 5 or 6 digit sender, from the terminal. A short code is granted rather than bought: you fill in the application, Sendly reviews it, the carrier forms are signed, and each carrier certifies the code. Short codes must be enabled for your account — until then these commands fail with "Short codes aren't enabled for this account yet." (code `not_found`; `short-codes list` shows it as a warning, with no code, and exits 1).
 
 ```bash
-# Where the application stands, what is missing, and the quoted lease
+# Where the application stands, what is missing, and where the setup fee and lease stand
 sendly short-codes application
 
 # Save answers (the first run creates the application)
@@ -646,9 +646,9 @@ sendly short-codes update --no-content-provider-same-as-brand \
 # Example messages (repeat the flag)
 sendly short-codes update --sample-message "Acme: your order shipped." --sample-message "Acme: your order arrived."
 
-# Check against the carrier rules, then submit for review
+# Check against the carrier rules, then submit for review (charges the $999 setup fee)
 sendly short-codes check
-sendly short-codes submit
+sendly short-codes submit --accept-terms
 
 # Codes leased to the workspace
 sendly short-codes list
@@ -656,9 +656,11 @@ sendly short-codes list
 
 `--order-type` is `new` or `migration`, and `--code-type` is `random` or `vanity`. A vanity request takes the digits you want in `--requested-digits`; a migration takes the code being moved plus `--losing-provider`. Other answers the carriers require: `--opt-in-flow`, `--opt-in-confirmation`, `--help-response`, `--stop-confirmation`, `--campaign-keyword`, `--expected-monthly-volume`, `--expected-daily-volume`, `--privacy-policy-url`, `--terms-url`.
 
-`sendly short-codes application` shows the review state, the quoted monthly lease (never charged automatically), how many carriers have approved, and each carrier form — the Short Code Order Brief, Brand Registration Form, Content Provider Registration Form, Migration Letter and Letter of Authorization — as *not ready yet*, *signing link sent* or *signed*. Fields Sendly or the carriers own are ignored on save and listed back to you.
+`sendly short-codes application` shows the review state, the setup fee and whether it is paid, the monthly lease (once the code is live: paid through, next charge, minimum term end, and any unpaid month with the date sending pauses), how many carriers have approved, and each carrier form — the Short Code Order Brief, Brand Registration Form, Content Provider Registration Form, Migration Letter and Letter of Authorization — as *not ready yet*, *signing link sent* or *signed*. Fields Sendly or the carriers own are ignored on save and listed back to you.
 
 `sendly short-codes check` runs the carrier rules without changing anything and lists what is left as `path: message` pairs. `submit` refuses until it passes.
+
+`submit` charges the one-time $999 setup fee to the workspace's card on file, so it needs `--accept-terms`: the fee now, the monthly lease ($1,150 random, $2,150 vanity) from the day the code goes live, and a 3-month minimum. The fee is refunded in full if Sendly rejects the application before filing it. Without a card it fails with `payment_method_required`; a declined card fails with `payment_failed`; and when your bank wants to confirm the payment it fails with `payment_requires_authentication` and prints `checkoutUrl`, a secure payment page to finish it on. In every case the application stays a draft and nothing is charged.
 
 ### RCS Commands
 
@@ -1412,7 +1414,7 @@ This opens a WebSocket session and displays:
 
 `--events` defaults to **every event type the API emits**, so nothing is missed during local development. Pass `--events` yourself to narrow the stream. The full set is:
 
-`message.sent`, `message.delivered`, `message.read`, `message.failed`, `message.bounced`, `message.retrying`, `message.received`, `message.opt_out`, `message.opt_in`, `verification.created`, `verification.delivered`, `verification.verified`, `verification.expired`, `verification.failed`, `verification.resent`, `verification.delivery_failed`, `conversation.created`, `conversation.updated`, `draft.created`, `draft.approved`, `draft.rejected`, `contact.auto_flagged`, `contact.marked_valid`, `contacts.lookup_completed`, `contacts.bulk_marked_valid`, `brand.verified`, `brand.failed`, `campaign.approved`, `campaign.rejected`, `campaign.suspended`, `assignment.confirmed`, `assignment.failed`, `rcs_brand.verified`, `rcs_brand.failed`, `rcs_agent.testing`, `rcs_agent.live`, `rcs_agent.rejected`, `rcs_agent.action_required`, `port.completed`, `port_out.requested`, `port_out.completed`, `port_out.rejected`, `port_out.cancelled`, `number.activated`, `number.failed`, `number.requirements_required`, `number.released`, `whatsapp_account.connected`, `whatsapp_account.failed`, `whatsapp_template.approved`, `whatsapp_template.rejected`, `whatsapp_template.paused`, `call.started`, `call.completed`, `call.recording.ready`, `short_code.action_required`, `short_code.rejected`, `short_code.filed`, `short_code.live`.
+`message.sent`, `message.delivered`, `message.read`, `message.failed`, `message.bounced`, `message.retrying`, `message.received`, `message.opt_out`, `message.opt_in`, `verification.created`, `verification.delivered`, `verification.verified`, `verification.expired`, `verification.failed`, `verification.resent`, `verification.delivery_failed`, `conversation.created`, `conversation.updated`, `draft.created`, `draft.approved`, `draft.rejected`, `contact.auto_flagged`, `contact.marked_valid`, `contacts.lookup_completed`, `contacts.bulk_marked_valid`, `brand.verified`, `brand.failed`, `campaign.approved`, `campaign.rejected`, `campaign.suspended`, `assignment.confirmed`, `assignment.failed`, `rcs_brand.verified`, `rcs_brand.failed`, `rcs_agent.testing`, `rcs_agent.live`, `rcs_agent.rejected`, `rcs_agent.action_required`, `port.completed`, `port_out.requested`, `port_out.completed`, `port_out.rejected`, `port_out.cancelled`, `number.activated`, `number.failed`, `number.requirements_required`, `number.released`, `whatsapp_account.connected`, `whatsapp_account.failed`, `whatsapp_template.approved`, `whatsapp_template.rejected`, `whatsapp_template.paused`, `call.started`, `call.completed`, `call.recording.ready`, `short_code.action_required`, `short_code.rejected`, `short_code.filed`, `short_code.live`, `short_code.suspended`, `short_code.reactivated`, `short_code.payment_succeeded`, `short_code.payment_failed`.
 
 #### Handling Lifecycle Events
 

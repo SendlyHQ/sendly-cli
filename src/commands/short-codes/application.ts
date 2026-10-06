@@ -34,8 +34,88 @@ interface ApplicationView {
   requiredDocuments: string[];
   missingDocuments: string[];
   documents: DocumentState[];
-  quote: { codeType: string; monthlyUsd: number | null; currency: string };
+  quote: {
+    codeType: string;
+    monthlyUsd: number | null;
+    currency: string;
+    monthlyCents?: number;
+    setupCents?: number;
+    minimumTermMonths?: number;
+  };
+  billing?: {
+    setupFee: { amountCents: number; status: string; paidAt: string | null; refundedCents: number };
+    lease: {
+      monthlyCents: number;
+      minimumTermMonths: number;
+      state: string;
+      billingEnabled: boolean;
+      nextChargeAt: string | null;
+      paidThrough: string | null;
+      termEndsAt: string | null;
+      endsAt: string | null;
+      pastDue: { amountCents: number; pauseAt: string | null } | null;
+    };
+    exempt: string | null;
+  };
   carriers: { approved: number; total: number; overall: string };
+}
+
+export function formatUsd(cents: number): string {
+  return `$${(cents / 100).toLocaleString("en-US", {
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function day(value: string | null | undefined): string | null {
+  return value ? value.slice(0, 10) : null;
+}
+
+const SETUP_FEE_STATES: Record<string, string> = {
+  unpaid: "charged when you submit",
+  paid: "paid",
+  waived: "not charged",
+  refunded: "refunded",
+  refund_pending: "refund in progress",
+  processing: "payment in progress",
+  requires_action: "waiting for you to confirm the payment",
+  failed: "card declined",
+  no_payment_method: "no card on file",
+};
+
+export function billingRows(view: ApplicationView): Array<[string, string]> {
+  const rows: Array<[string, string]> = [];
+  const setupCents = view.billing?.setupFee.amountCents ?? view.quote.setupCents ?? 99900;
+  const status = view.billing?.setupFee.status ?? "unpaid";
+  const paidOn = status === "paid" ? day(view.billing?.setupFee.paidAt) : null;
+  rows.push([
+    "Setup fee",
+    `${formatUsd(setupCents)}, ${SETUP_FEE_STATES[status] ?? status}${paidOn ? ` on ${paidOn}` : ""}`,
+  ]);
+  const monthlyCents =
+    view.billing?.lease.monthlyCents ??
+    view.quote.monthlyCents ??
+    (view.quote.monthlyUsd !== null ? view.quote.monthlyUsd * 100 : null);
+  if (monthlyCents === null) return rows;
+  const lease = view.billing?.lease;
+  const term = lease?.minimumTermMonths ?? view.quote.minimumTermMonths ?? 3;
+  if (!lease || lease.state === "not_started") {
+    rows.push(["Lease", `${formatUsd(monthlyCents)}/month from go-live, ${term}-month minimum`]);
+    return rows;
+  }
+  rows.push(["Lease", `${formatUsd(monthlyCents)}/month, ${lease.state}`]);
+  if (lease.paidThrough) rows.push(["Paid through", day(lease.paidThrough)!]);
+  if (lease.nextChargeAt) rows.push(["Next charge", day(lease.nextChargeAt)!]);
+  if (lease.termEndsAt) rows.push(["Minimum term ends", day(lease.termEndsAt)!]);
+  if (lease.endsAt) rows.push(["Lease ends", day(lease.endsAt)!]);
+  if (lease.pastDue) {
+    const pause = day(lease.pastDue.pauseAt);
+    rows.push([
+      "Past due",
+      `${formatUsd(lease.pastDue.amountCents)} unpaid${pause ? `; sending pauses on ${pause}` : ""}. Pay from the short code status page`,
+    ]);
+  }
+  return rows;
 }
 
 const DOCUMENT_LABELS: Record<string, string> = {
@@ -56,7 +136,7 @@ export function reportShortCodeError(error: unknown): never {
 
 export default class ShortCodesApplication extends AuthenticatedCommand {
   static description =
-    "Show the workspace's short code application — where it stands, what is missing, and the quoted lease";
+    "Show the workspace's short code application — where it stands, what is missing, and where the setup fee and lease stand";
 
   static examples = [
     "<%= config.bin %> short-codes application",
@@ -102,12 +182,7 @@ export default class ShortCodesApplication extends AuthenticatedCommand {
       ["Status", app.status],
       ["Review", app.reviewStatus],
     ];
-    if (view.quote.monthlyUsd !== null) {
-      rows.push([
-        "Quoted lease",
-        `$${view.quote.monthlyUsd}/month (${view.quote.currency}), never charged automatically`,
-      ]);
-    }
+    rows.push(...billingRows(view));
     rows.push([
       "Carriers",
       `${view.carriers.approved} of ${view.carriers.total} approved`,
