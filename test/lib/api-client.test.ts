@@ -485,6 +485,79 @@ describe("API Client", () => {
     });
   });
 
+  describe("an upload the API refuses", () => {
+    const refuseUpload = (status: number, body: Record<string, unknown>) => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status,
+        json: () => Promise.resolve(body),
+        headers: new Map(),
+      });
+      return apiClient
+        .uploadFile("/api/v1/media", {
+          buffer: Buffer.from("RIFF0000WEBP"),
+          filename: "photo.webp",
+          mimetype: "image/webp",
+        })
+        .then(
+          () => {
+            throw new Error("expected the upload to fail");
+          },
+          (e: ApiError) => e,
+        );
+    };
+
+    it("says a 413 is the file's size, with the code, and does not retry", async () => {
+      const err = await refuseUpload(413, {
+        error: "file_too_large",
+        message: 'The file in field "file" is too large.',
+      });
+
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.statusCode).toBe(413);
+      expect(err.code).toBe("file_too_large");
+      expect(err.message).toBe('The file in field "file" is too large.');
+      expect(err.hint).toBe("Use a smaller file");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("says a 415 is the file's type, with the API's reason, and does not retry", async () => {
+      const err = await refuseUpload(415, {
+        error: "unsupported_media_type",
+        message: "Only JPEG, PNG, and GIF images are allowed for MMS",
+      });
+
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.statusCode).toBe(415);
+      expect(err.code).toBe("unsupported_media_type");
+      expect(err.message).toBe("Only JPEG, PNG, and GIF images are allowed for MMS");
+      expect(err.hint).toBe("Use a file of a type this command accepts");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["constructor", "toString", "__proto__"])(
+      "gives no hint for a code named like an object built-in, %s",
+      async (code) => {
+        const err = await refuseUpload(409, { error: code, message: "Refused." });
+
+        expect(err).toBeInstanceOf(ApiError);
+        expect(err.code).toBe(code);
+        expect(err.hint).toBeUndefined();
+      },
+    );
+
+    it("reports a 400 invalid_upload as a validation error with its message", async () => {
+      const err = await refuseUpload(400, {
+        error: "invalid_upload",
+        message: 'Unexpected file field "photo".',
+      });
+
+      expect(err).toBeInstanceOf(ValidationError);
+      expect(err.message).toBe('Unexpected file field "photo".');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("rate limit info", () => {
     it("captures rate limit headers", async () => {
       const headers = new Map([

@@ -95,6 +95,11 @@ function retryDelayMs(error: unknown, attempt: number): number {
   return Math.min(1000 * Math.pow(2, attempt), 10000);
 }
 
+const UPLOAD_HINTS: Record<string, string> = {
+  file_too_large: "Use a smaller file",
+  unsupported_media_type: "Use a file of a type this command accepts",
+};
+
 function errorSentence(error: unknown): string | undefined {
   return typeof error === "string" &&
     error.trim() !== "" &&
@@ -677,7 +682,9 @@ class ApiClient {
         const defaultHint =
           statusCode >= 500
             ? "This is a server error. Try again later or check https://status.sendly.live"
-            : undefined;
+            : Object.hasOwn(UPLOAD_HINTS, error)
+              ? UPLOAD_HINTS[error]
+              : undefined;
         const apiError = new ApiError(
           error,
           message,
