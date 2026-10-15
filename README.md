@@ -1262,6 +1262,15 @@ feature as not found.
 
 #### Create a Short Link
 
+Creating needs a live API key in `SENDLY_API_KEY`: a `sendly login` session
+counts as a test key and gets `live_key_required`. The workspace needs an
+approved business verification (`business_verification_required`) and can make
+1,000 links per UTC day (`daily_link_limit_reached`). A refused URL gets
+`invalid_url`, `already_short`, `destination_too_long` or
+`link_destination_not_allowed`. Listing needs the `links:read` scope and
+creating or disabling `links:write` (or `sms:read` and `sms:send` on a key made
+before those scopes).
+
 ```bash
 sendly links create https://shop.example/spring-sale
 sendly links create --url "https://shop.example/welcome?utm_source=sms"
@@ -1280,7 +1289,9 @@ sendly links list --limit 20 --offset 20
 
 #### Disable / Re-enable a Short Link
 
-The per-link kill switch — a disabled link's redirect returns 404:
+The per-link kill switch: within about two minutes a disabled link's redirect
+answers 410. In a team workspace only an owner or admin can do this, and a link
+Sendly took down cannot be re-enabled (`link_disabled_by_sendly`):
 
 ```bash
 sendly links disable Ab3xY7

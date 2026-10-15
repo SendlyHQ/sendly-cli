@@ -25,10 +25,14 @@ interface ShortLink {
  *
  * Gated behind the `url_shortener` rollout flag — until it's enabled for your
  * account the server returns `404 not_found` and this command surfaces it.
+ *
+ * Creating needs a live API key (set SENDLY_API_KEY); a CLI login counts as a
+ * test key and gets `live_key_required`. The workspace needs an approved
+ * business verification, and can make 1,000 links per UTC day.
  */
 export default class LinksCreate extends AuthenticatedCommand {
   static description =
-    "Shorten a URL into a branded short link. Requires the url_shortener feature to be enabled for your account.";
+    "Shorten a URL into a branded short link. Needs the url_shortener feature, a live API key (SENDLY_API_KEY; a CLI login cannot create links) and an approved business verification.";
 
   static examples = [
     "<%= config.bin %> links create https://example.com/spring-sale",

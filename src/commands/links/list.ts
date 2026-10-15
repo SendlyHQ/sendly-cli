@@ -33,7 +33,8 @@ interface ShortLinkListResponse {
  * created, newest first, with click counts.
  *
  * Wraps `GET /api/v1/links`. Gated behind the `url_shortener` rollout flag —
- * until it's enabled the server returns `404 not_found`.
+ * until it's enabled the server returns `404 not_found`. Page with --offset
+ * until it reaches the total shown.
  */
 export default class LinksList extends AuthenticatedCommand {
   static description = "List your branded short links with click counts";

@@ -10,14 +10,16 @@ interface ShortLinkDisabledResponse {
 
 /**
  * `sendly links disable <code>` — the per-link kill switch. A disabled link's
- * redirect returns 404 until it is re-enabled. Pass `--enable` to re-enable.
+ * redirect answers 410, within about two minutes, until it is re-enabled. Pass
+ * `--enable` to re-enable. Needs links:write and, in a team workspace, an owner
+ * or admin.
  *
  * Wraps `PATCH /api/v1/links/:code`. Gated behind the `url_shortener` rollout
  * flag — until it's enabled the server returns `404 not_found`.
  */
 export default class LinksDisable extends AuthenticatedCommand {
   static description =
-    "Disable a short link so its redirect returns 404 (use --enable to re-enable)";
+    "Disable a short link so its redirect answers 410 (use --enable to re-enable)";
 
   static examples = [
     "<%= config.bin %> links disable Ab3xY7",
