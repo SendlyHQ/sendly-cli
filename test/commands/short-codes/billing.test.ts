@@ -21,6 +21,7 @@ global.fetch = mockFetch;
 
 import ShortCodesSubmit from "../../../src/commands/short-codes/submit.js";
 import ShortCodesApplication from "../../../src/commands/short-codes/application.js";
+import ShortCodesList from "../../../src/commands/short-codes/list.js";
 import { setOutputFormat } from "../../../src/lib/output.js";
 import { respond, runCommand } from "../../helpers/run-command.js";
 
@@ -223,5 +224,143 @@ describe("short-codes application", () => {
     const run = await runCommand(ShortCodesApplication, []);
     expect(run.stdout).toContain("$999, charged when you submit");
     expect(run.stdout).toContain("$1,150/month from go-live, 3-month minimum");
+  });
+});
+
+describe("short-codes application: verification and suggested wording", () => {
+  it("says the business is verified", async () => {
+    mockFetch.mockResolvedValueOnce(
+      respond(200, view({ verification: { verified: true, state: "verified", href: "/verify" } })),
+    );
+    const run = await runCommand(ShortCodesApplication, []);
+    expect(run.stdout).toMatch(/Business verification.*verified/);
+    expect(run.stdout).not.toContain("Submitting needs a verified business");
+  });
+
+  it("says submitting needs a verified business, and where to finish it", async () => {
+    mockFetch.mockResolvedValueOnce(
+      respond(200, view({ verification: { verified: false, state: "in_review", href: "/verify" } })),
+    );
+    const run = await runCommand(ShortCodesApplication, []);
+    expect(run.stdout).toContain("in review");
+    expect(run.stdout).toContain("Submitting needs a verified business: https://sendly.live/verify");
+  });
+
+  it("names the wording Sendly suggested while the application still carries it", async () => {
+    const base = view();
+    mockFetch.mockResolvedValueOnce(
+      respond(
+        200,
+        view({
+          editable: true,
+          application: { ...base.application, useCase: "Order alerts for Acme", optInFlow: "Customers text JOIN" },
+          generatedDefaults: { useCase: "Order alerts for Acme", optInFlow: "Customers text JOIN" },
+        }),
+      ),
+    );
+    const run = await runCommand(ShortCodesApplication, []);
+    expect(run.stdout).toContain("Sendly suggested the wording of --use-case and --opt-in-flow");
+  });
+
+  it("names only the suggested wording that has not been edited, ignoring spacing and case", async () => {
+    const base = view();
+    mockFetch.mockResolvedValueOnce(
+      respond(
+        200,
+        view({
+          editable: true,
+          application: {
+            ...base.application,
+            useCase: "Order alerts and shipping updates for Acme customers",
+            optInFlow: "  customers   text\nJOIN ",
+          },
+          generatedDefaults: { useCase: "Order alerts for Acme", optInFlow: "Customers text JOIN" },
+        }),
+      ),
+    );
+    const run = await runCommand(ShortCodesApplication, []);
+    expect(run.stdout).toContain("Sendly suggested the wording of --opt-in-flow. Edit it");
+    expect(run.stdout).not.toContain("--use-case");
+  });
+
+  it("does not ask for an edit once the suggested wording has been changed", async () => {
+    const base = view();
+    mockFetch.mockResolvedValueOnce(
+      respond(
+        200,
+        view({
+          editable: true,
+          application: {
+            ...base.application,
+            useCase: "Order alerts and shipping updates for Acme customers",
+            optInFlow: "Customers tick an unchecked box at checkout",
+          },
+          generatedDefaults: { useCase: "Order alerts for Acme", optInFlow: "Customers text JOIN" },
+        }),
+      ),
+    );
+    const run = await runCommand(ShortCodesApplication, []);
+    expect(run.stdout).not.toContain("Sendly suggested");
+  });
+
+  it("does not ask for an edit when the application can no longer be changed", async () => {
+    const base = view();
+    mockFetch.mockResolvedValueOnce(
+      respond(
+        200,
+        view({
+          editable: false,
+          application: { ...base.application, useCase: "Order alerts for Acme" },
+          generatedDefaults: { useCase: "Order alerts for Acme" },
+        }),
+      ),
+    );
+    const run = await runCommand(ShortCodesApplication, []);
+    expect(run.stdout).not.toContain("Sendly suggested");
+  });
+
+  it("takes the setup fee from setupUsd when no cents are given", async () => {
+    const base = view();
+    mockFetch.mockResolvedValueOnce(
+      respond(
+        200,
+        view({
+          quote: { codeType: "random", monthlyUsd: 1150, setupUsd: 1250, currency: "USD", autoBilled: false },
+          billing: undefined,
+          application: { ...base.application, reviewStatus: "draft", status: "requested" },
+        }),
+      ),
+    );
+    const run = await runCommand(ShortCodesApplication, []);
+    expect(run.stdout).toContain("$1,250, charged when you submit");
+  });
+});
+
+describe("short-codes list", () => {
+  it("lists drafts with no code yet, and each review status", async () => {
+    mockFetch.mockResolvedValueOnce(
+      respond(200, {
+        shortCodes: [
+          {
+            id: "sc_2",
+            shortCode: null,
+            countryCode: "US",
+            status: "requested",
+            reviewStatus: "draft",
+            useCase: "Order alerts",
+            createdAt: "2026-10-01T10:00:00.000Z",
+          },
+        ],
+      }),
+    );
+    const run = await runCommand(ShortCodesList, []);
+    expect(run.exitCode).toBeUndefined();
+    expect(run.stdout).toContain("not assigned");
+    expect(run.stdout).toContain("Review");
+    expect(run.stdout).toContain("draft");
+  });
+
+  it("describes every application, not only leased codes", () => {
+    expect(ShortCodesList.description).toContain("Drafts, rejected and cancelled applications are listed too");
   });
 });

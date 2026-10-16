@@ -51,6 +51,7 @@ export interface VoiceNumber {
 export interface VoiceAgentTools {
   sendSms: boolean;
   transferTo: string | null;
+  backgroundAudio?: boolean;
 }
 
 export interface VoiceAgent {
@@ -159,6 +160,8 @@ export interface AgentFlags {
   greeting?: string;
   instructions?: string;
   sms?: boolean;
+  "transfer-to"?: string;
+  "background-audio"?: boolean;
 }
 
 export function buildAgentBody(flags: AgentFlags): Record<string, unknown> {
@@ -170,8 +173,25 @@ export function buildAgentBody(flags: AgentFlags): Record<string, unknown> {
   if (flags.language !== undefined) body.language = flags.language.trim();
   if (flags.greeting !== undefined) body.greeting = flags.greeting;
   if (flags.instructions !== undefined) body.instructions = flags.instructions;
-  if (flags.sms !== undefined) body.tools = { sendSms: flags.sms };
+  const tools: Record<string, unknown> = {};
+  if (flags.sms !== undefined) tools.sendSms = flags.sms;
+  if (flags["transfer-to"] !== undefined) {
+    const transferTo = flags["transfer-to"].trim();
+    tools.transferTo = transferTo === "" ? null : transferTo;
+  }
+  if (flags["background-audio"] !== undefined) {
+    tools.backgroundAudio = flags["background-audio"];
+  }
+  if (Object.keys(tools).length > 0) body.tools = tools;
   return body;
+}
+
+export function formatTransfer(agent: Pick<VoiceAgent, "tools">): string {
+  return agent.tools?.transferTo ?? colors.dim("off");
+}
+
+export function formatBackgroundAudio(agent: Pick<VoiceAgent, "tools">): string {
+  return agent.tools?.backgroundAudio ? colors.success("on") : colors.dim("off");
 }
 
 export function formatVoiceMode(mode: string, voiceEnabled: boolean): string {

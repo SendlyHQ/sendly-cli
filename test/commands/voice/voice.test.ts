@@ -48,9 +48,11 @@ import {
   buildNumberUpdateBody,
   emergencyAddressCommand,
   formatAddress,
+  formatBackgroundAudio,
   formatEmergencyStatus,
   formatRates,
   formatTexting,
+  formatTransfer,
   formatVoiceMode,
   needsEmergencyAddress,
   reportVoiceError,
@@ -312,6 +314,18 @@ describe("voice wire contract", () => {
     });
   });
 
+  it("puts the transfer number and background audio in tools, and an empty --transfer-to turns transfers off", () => {
+    expect(
+      buildAgentBody({ sms: false, "transfer-to": " +15125550100 ", "background-audio": true }),
+    ).toEqual({
+      tools: { sendSms: false, transferTo: "+15125550100", backgroundAudio: true },
+    });
+    expect(buildAgentBody({ "transfer-to": "" })).toEqual({ tools: { transferTo: null } });
+    expect(buildAgentBody({ "background-audio": false })).toEqual({
+      tools: { backgroundAudio: false },
+    });
+  });
+
   it("agents update PATCHes only the changed fields, and an empty body is allowed", async () => {
     mockFetch.mockResolvedValue(ok(200, AGENT));
 
@@ -440,6 +454,14 @@ describe("voice command flags", () => {
     expect(flags.enable.exclusive).toEqual(["disable"]);
   });
 
+  it("agents create and update take --transfer-to and --background-audio/--no-background-audio", () => {
+    for (const flags of [VoiceAgentsCreate.flags, VoiceAgentsUpdate.flags]) {
+      expect(flags["transfer-to"]).toBeDefined();
+      expect(flags["background-audio"].allowNo).toBe(true);
+      expect(flags["background-audio"].default).toBeUndefined();
+    }
+  });
+
   it("agents delete can skip its confirmation with --yes", () => {
     expect(VoiceAgentsDelete.flags.yes.char).toBe("y");
   });
@@ -473,6 +495,13 @@ describe("voice helpers", () => {
     expect(formatTexting({ tools: { sendSms: true, transferTo: null }, canSendSms: false })).toContain(
       "no sending key",
     );
+  });
+
+  it("shows the transfer number and background audio, or off", () => {
+    expect(formatTransfer({ tools: { sendSms: true, transferTo: "+15125550100" } })).toBe("+15125550100");
+    expect(formatTransfer({ tools: { sendSms: true, transferTo: null } })).toContain("off");
+    expect(formatBackgroundAudio({ tools: { sendSms: true, transferTo: null, backgroundAudio: true } })).toContain("on");
+    expect(formatBackgroundAudio({ tools: { sendSms: true, transferTo: null } })).toContain("off");
   });
 
   it("asks for an emergency address only on US and Canadian numbers without an active or pending one", () => {

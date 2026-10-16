@@ -62,6 +62,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "short_code.live",
   "short_code.suspended",
   "short_code.reactivated",
+  "short_code.cancelled",
   "short_code.payment_succeeded",
   "short_code.payment_failed",
 ] as const;

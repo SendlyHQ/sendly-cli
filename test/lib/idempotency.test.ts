@@ -27,7 +27,11 @@ vi.mock("../../src/lib/config.js", () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-import { apiClient, ValidationError } from "../../src/lib/api-client.js";
+import {
+  apiClient,
+  ApiError,
+  ValidationError,
+} from "../../src/lib/api-client.js";
 
 const KEY_PATTERN =
   /^sendly-cli-retry-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -37,6 +41,15 @@ function mockResponse(data: unknown, status: number = 200) {
     ok: status >= 200 && status < 300,
     status,
     json: () => Promise.resolve(data),
+    headers: new Map(),
+  };
+}
+
+function unparsableResponse(status: number) {
+  return {
+    ok: false,
+    status,
+    json: () => Promise.reject(new SyntaxError("Unexpected token '<'")),
     headers: new Map(),
   };
 }
@@ -138,14 +151,9 @@ describe("Idempotency keys", () => {
       expect(keyOfCall(0)).toEqual(keyOfCall(1));
     });
 
-    it("keeps the auto-generated key when retrying after a 5xx response, which the API never records", async () => {
+    it("keeps the auto-generated key when retrying after a 503, which the API never records", async () => {
       mockFetch
-        .mockResolvedValueOnce(
-          mockResponse(
-            { error: "internal_error", message: "Internal server error" },
-            500,
-          ),
-        )
+        .mockResolvedValueOnce(mockResponse({}, 503))
         .mockResolvedValueOnce(mockResponse({ id: "msg_123" }));
 
       const result = await apiClient.post("/api/v1/messages", {
@@ -162,14 +170,9 @@ describe("Idempotency keys", () => {
       expect(second).toEqual(first);
     });
 
-    it("keeps one key across a 5xx and then a network error", async () => {
+    it("keeps one key across a 503 and then a network error", async () => {
       mockFetch
-        .mockResolvedValueOnce(
-          mockResponse(
-            { error: "internal_error", message: "Internal server error" },
-            500,
-          ),
-        )
+        .mockResolvedValueOnce(mockResponse({}, 503))
         .mockRejectedValueOnce(new TypeError("fetch failed"))
         .mockResolvedValueOnce(mockResponse({ id: "msg_123" }));
 
@@ -187,14 +190,9 @@ describe("Idempotency keys", () => {
       expect(third).toEqual(second);
     });
 
-    it("keeps the auto key on 5xx for file uploads too", async () => {
+    it("keeps the auto key on a 503 for file uploads too", async () => {
       mockFetch
-        .mockResolvedValueOnce(
-          mockResponse(
-            { error: "internal_error", message: "Internal server error" },
-            502,
-          ),
-        )
+        .mockResolvedValueOnce(mockResponse({}, 503))
         .mockResolvedValueOnce(
           mockResponse({ id: "med_x", url: "https://cdn.example/x.jpg" }),
         );
@@ -212,6 +210,217 @@ describe("Idempotency keys", () => {
       expect(second).toMatch(KEY_PATTERN);
       expect(second).toEqual(first);
     });
+
+    it("does not retry a send the API refused with a 502 error body, and keeps its code and message", async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(
+          {
+            error: "rcs_send_failed",
+            errorCode: "E099",
+            message: "The message couldn't be delivered.",
+          },
+          502,
+        ),
+      );
+
+      const err = await apiClient
+        .post("/api/v1/messages", {
+          channel: "rcs",
+          to: "+15125550190",
+          text: "Hello",
+        })
+        .catch((e) => e);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.code).toBe("rcs_send_failed");
+      expect(err.message).toBe("The message couldn't be delivered.");
+      expect(err.statusCode).toBe(502);
+    });
+
+    it("does not retry a POST the API answered with a 500, even with a caller key", async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(
+          { error: "internal_error", message: "Internal server error" },
+          500,
+        ),
+      );
+
+      const err = await apiClient
+        .post(
+          "/api/v1/messages",
+          { to: "+1555", text: "Hello" },
+          true,
+          { idempotencyKey: "order-4821-shipped" },
+        )
+        .catch((e) => e);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(err.code).toBe("internal_error");
+    });
+
+    it("does not retry a 5xx with a sentence body on a POST", async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({ error: "Failed to purchase number" }, 502),
+      );
+
+      const err = await apiClient
+        .post("/api/v1/numbers", { phoneNumber: "+15125550190" })
+        .catch((e) => e);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(err.message).toBe("Failed to purchase number");
+    });
+
+    it("does not retry an upload the API answered with a 5xx", async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(
+          { error: "upload_failed", message: "The upload failed" },
+          500,
+        ),
+      );
+
+      await expect(
+        apiClient.uploadFile("/api/v1/media", {
+          buffer: Buffer.from("fake-image-bytes"),
+          filename: "x.jpg",
+          mimetype: "image/jpeg",
+        }),
+      ).rejects.toThrow("The upload failed");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not retry a send whose 502 body was empty", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({}, 502));
+
+      const err = await apiClient
+        .post("/api/v1/messages", {
+          channel: "rcs",
+          to: "+15125550190",
+          text: "Hello",
+        })
+        .catch((e) => e);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.statusCode).toBe(502);
+    });
+
+    it.each([502, 504])(
+      "does not retry a send whose %i body was not JSON",
+      async (status) => {
+        mockFetch.mockResolvedValueOnce(unparsableResponse(status));
+
+        const err = await apiClient
+          .post("/api/v1/messages", {
+            channel: "rcs",
+            to: "+15125550190",
+            text: "Hello",
+          })
+          .catch((e) => e);
+
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(err).toBeInstanceOf(ApiError);
+        expect(err.statusCode).toBe(status);
+      },
+    );
+
+    it("does not retry a PATCH answered with a 502", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({}, 502));
+
+      await expect(
+        apiClient.patch("/api/v1/webhooks/whk_1", { url: "https://x.example" }),
+      ).rejects.toBeInstanceOf(ApiError);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries a POST answered with a 503 that is not the maintenance hold", async () => {
+      mockFetch
+        .mockResolvedValueOnce(
+          mockResponse(
+            {
+              error: "service_unavailable",
+              message: "Sending is temporarily unavailable.",
+            },
+            503,
+          ),
+        )
+        .mockResolvedValueOnce(mockResponse({ id: "msg_123" }));
+
+      const result = await apiClient.post("/api/v1/messages", {
+        to: "+1555",
+        text: "Hello",
+      });
+
+      expect(result).toEqual({ id: "msg_123" });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(keyOfCall(1)).toEqual(keyOfCall(0));
+    });
+
+    it("does not retry a gateway 5xx on a POST sent without an idempotency key", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({}, 502));
+
+      await expect(
+        apiClient.post(
+          "/api/v1/messages/batch",
+          { messages: [{ to: "+1555", text: "Hello" }] },
+          true,
+          { autoIdempotencyKey: false },
+        ),
+      ).rejects.toBeInstanceOf(ApiError);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries a POST the edge held for maintenance and never forwarded", async () => {
+      mockFetch
+        .mockResolvedValueOnce(
+          mockResponse(
+            {
+              error: "maintenance",
+              message:
+                "Sendly is completing scheduled maintenance. Please retry in a few seconds.",
+            },
+            503,
+          ),
+        )
+        .mockResolvedValueOnce(mockResponse({ id: "msg_123" }));
+
+      const result = await apiClient.post("/api/v1/messages", {
+        to: "+1555",
+        text: "Hello",
+      });
+
+      expect(result).toEqual({ id: "msg_123" });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(keyOfCall(1)).toEqual(keyOfCall(0));
+    });
+
+    it("still retries a GET whose 502 body was not JSON", async () => {
+      mockFetch
+        .mockResolvedValueOnce(unparsableResponse(502))
+        .mockResolvedValueOnce(mockResponse({ data: [] }));
+
+      const result = await apiClient.get("/api/v1/messages");
+
+      expect(result).toEqual({ data: [] });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("still retries a GET the API answered with a 5xx", async () => {
+      mockFetch
+        .mockResolvedValueOnce(
+          mockResponse(
+            { error: "internal_error", message: "Internal server error" },
+            500,
+          ),
+        )
+        .mockResolvedValueOnce(mockResponse({ data: [] }));
+
+      const result = await apiClient.get("/api/v1/messages");
+
+      expect(result).toEqual({ data: [] });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("caller-supplied keys", () => {
@@ -228,14 +437,9 @@ describe("Idempotency keys", () => {
       expect(keyOfCall(0)).toEqual("order-4821-shipped");
     });
 
-    it("never rotates the caller's key, even across a 5xx retry", async () => {
+    it("never rotates the caller's key, even across a 503 retry", async () => {
       mockFetch
-        .mockResolvedValueOnce(
-          mockResponse(
-            { error: "internal_error", message: "Internal server error" },
-            500,
-          ),
-        )
+        .mockResolvedValueOnce(mockResponse({}, 503))
         .mockResolvedValueOnce(mockResponse({ id: "msg_123" }));
 
       await apiClient.post(

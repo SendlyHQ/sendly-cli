@@ -15,13 +15,14 @@ interface ShortCodeRow {
   shortCode: string | null;
   countryCode: string;
   status: string;
+  reviewStatus?: string;
   useCase: string;
   createdAt: string;
 }
 
 export default class ShortCodesList extends AuthenticatedCommand {
   static description =
-    "List the short codes leased to the workspace, including ones still being certified";
+    "List the workspace's short code applications, newest first, with each code once Sendly assigns one. Drafts, rejected and cancelled applications are listed too";
 
   static examples = [
     "<%= config.bin %> short-codes list",
@@ -76,6 +77,7 @@ export default class ShortCodesList extends AuthenticatedCommand {
         formatter: (v) => (v ? colors.code(String(v)) : colors.dim("not assigned")),
       },
       { header: "Status", key: "status", formatter: (v) => String(v) },
+      { header: "Review", key: "reviewStatus", formatter: (v) => (v ? String(v) : "-") },
       { header: "Country", key: "countryCode", formatter: (v) => String(v) },
       {
         header: "Use case",

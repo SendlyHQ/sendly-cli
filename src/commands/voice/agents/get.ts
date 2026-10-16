@@ -11,7 +11,9 @@ import {
 } from "../../../lib/output.js";
 import { formatDuration } from "../../../lib/calls.js";
 import {
+  formatBackgroundAudio,
   formatTexting,
+  formatTransfer,
   reportVoiceError,
   voiceAgentPath,
   type VoiceAgent,
@@ -79,12 +81,10 @@ export default class VoiceAgentsGet extends AuthenticatedCommand {
       ["Language", agent.language],
       ["Texting", formatTexting(agent)],
     ];
-    if (agent.tools?.transferTo) {
-      rows.push([
-        "Transfer number",
-        `${agent.tools.transferTo} ${colors.dim("(calls are not transferred yet; the agent takes a message instead)")}`,
-      ]);
-    }
+    rows.push(
+      ["Transfers to", formatTransfer(agent)],
+      ["Background audio", formatBackgroundAudio(agent)],
+    );
     rows.push(
       ["Calls handled", String(agent.callsHandled ?? 0)],
       ["Average call", formatDuration(agent.avgDurationSecs)],

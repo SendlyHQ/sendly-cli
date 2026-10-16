@@ -326,6 +326,20 @@ describe("API Client", () => {
         );
       });
 
+      it("asks for a live key on a short code send from a test key", async () => {
+        forbid({
+          error: "short_code_requires_live_key",
+          message: "Short code messages need a live API key.",
+        });
+
+        const err = await rejection();
+        expect(err).toBeInstanceOf(ApiKeyRequiredError);
+        expect(err.code).toBe("short_code_requires_live_key");
+        expect(err.hint).toBe(
+          'Create a live key with: sendly keys create --name "Live key" --type live',
+        );
+      });
+
       it("still reads an uncoded API key refusal as a missing key", async () => {
         forbid({ message: "A valid API key is required" });
 
@@ -472,6 +486,22 @@ describe("API Client", () => {
 
         expect(err.message).toBe("URL is required");
       });
+
+      it.each(["rcs_send_unconfirmed", "short_code_send_unconfirmed"])(
+        "warns that a %s message may still arrive",
+        async (code) => {
+          const err = await refuse(409, {
+            error: code,
+            message: "The network may have accepted the message.",
+            errorCode: "40300",
+          });
+
+          expect(err.statusCode).toBe(409);
+          expect(err.code).toBe(code);
+          expect(err.hint).toContain("it may still be delivered");
+          expect(mockFetch).toHaveBeenCalledTimes(1);
+        },
+      );
 
       it("uses the sentence of a 404, and the not-found default for a code", async () => {
         const sentence = await refuse(404, { error: "Enterprise account not found" });

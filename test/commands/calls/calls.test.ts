@@ -468,6 +468,12 @@ describe("calls helpers", () => {
     expect(formatHangupClass("something_new")).toBe("something_new");
   });
 
+  it("labels the agent outcomes transferred, voicemail and voicemail_unavailable", () => {
+    expect(formatHangupClass("transferred")).toContain("agent transferred the caller");
+    expect(formatHangupClass("voicemail")).toContain("left a message");
+    expect(formatHangupClass("voicemail_unavailable")).toContain("could not take a message");
+  });
+
   it("parses repeatable key=value metadata flags", () => {
     expect(parseMetadataFlags(undefined)).toEqual({});
     expect(parseMetadataFlags([])).toEqual({});

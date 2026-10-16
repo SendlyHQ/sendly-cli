@@ -650,15 +650,15 @@ sendly short-codes update --sample-message "Acme: your order shipped." --sample-
 sendly short-codes check
 sendly short-codes submit --accept-terms
 
-# Codes leased to the workspace
+# Every application and code, drafts included
 sendly short-codes list
 ```
 
 `--order-type` is `new` or `migration`, and `--code-type` is `random` or `vanity`. A vanity request takes the digits you want in `--requested-digits`; a migration takes the code being moved plus `--losing-provider`. Other answers the carriers require: `--opt-in-flow`, `--opt-in-confirmation`, `--help-response`, `--stop-confirmation`, `--campaign-keyword`, `--expected-monthly-volume`, `--expected-daily-volume`, `--privacy-policy-url`, `--terms-url`.
 
-`sendly short-codes application` shows the review state, the setup fee and whether it is paid, the monthly lease (once the code is live: paid through, next charge, minimum term end, and any unpaid month with the date sending pauses), how many carriers have approved, and each carrier form — the Short Code Order Brief, Brand Registration Form, Content Provider Registration Form, Migration Letter and Letter of Authorization — as *not ready yet*, *signing link sent* or *signed*. Fields Sendly or the carriers own are ignored on save and listed back to you.
+`sendly short-codes application` shows the review state, the setup fee and whether it is paid, the monthly lease (once the code is live: paid through, next charge, minimum term end, and any unpaid month with the date sending pauses), whether the workspace's business is verified (submitting needs it), how many carriers have approved, and each carrier form — the Short Code Order Brief, Brand Registration Form, Content Provider Registration Form, Migration Letter and Letter of Authorization — as *not ready yet*, *signing link sent* or *signed*. Fields Sendly or the carriers own are ignored on save and listed back to you.
 
-`sendly short-codes check` runs the carrier rules without changing anything and lists what is left as `path: message` pairs. `submit` refuses until it passes.
+`sendly short-codes check` runs the carrier rules without changing anything and lists what is left as `path: message` pairs. `submit` refuses until it passes, refuses wording Sendly suggested until you have edited it (`short_code_ai_draft_unedited`; `application` names the fields), and refuses with `verification_required` until the business is verified.
 
 `submit` charges the one-time $999 setup fee to the workspace's card on file, so it needs `--accept-terms`: the fee now, the monthly lease ($1,150 random, $2,150 vanity) from the day the code goes live, and a 3-month minimum. The fee is refunded in full if Sendly rejects the application before filing it. Without a card it fails with `payment_method_required`; a declined card fails with `payment_failed`; and when your bank wants to confirm the payment it fails with `payment_requires_authentication` and prints `checkoutUrl`, a secure payment page to finish it on. In every case the application stays a draft and nothing is charged.
 
@@ -797,9 +797,12 @@ sendly rcs send --to "+15125550190" \
 
 # Fail instead of falling back to SMS
 sendly rcs send --to "+15125550190" --text "RCS only please" --no-fallback
+
+# A promotion, held to the recipient's quiet hours
+sendly rcs send --to "+15125550190" --text "20% off this weekend" --type marketing
 ```
 
-`--card-description` is required with `--card-title`, and `--text` cannot be combined with the card flags. `--card-orientation` is `vertical` or `horizontal`. The output shows what actually happened: native RCS delivery, or the SMS fallback (suggestion chips have no SMS form and are dropped).
+`--card-description` is required with `--card-title`, and `--text` cannot be combined with the card flags. `--card-orientation` is `vertical` or `horizontal`. `--type` is `transactional` (the default for RCS) or `marketing`; it applies to the RCS message and to an SMS fallback. The output shows what actually happened: native RCS delivery, or the SMS fallback and why (suggestion chips have no SMS form and are dropped). A `409 rcs_send_unconfirmed` means the RCS network may have taken the message: it is marked failed and refunded but can still arrive, so check with the recipient before sending it again.
 
 #### List Your Agents
 
@@ -1235,6 +1238,7 @@ sendly voice agents get <agentId>
 # Only the flags you pass change
 sendly voice agents update <agentId> --no-sms
 sendly voice agents update <agentId> --disable
+sendly voice agents update <agentId> --transfer-to +15125550100 --background-audio
 
 # Asks before deleting; --yes skips the prompt
 sendly voice agents delete <agentId>
@@ -1247,7 +1251,11 @@ at 4000; on `update`, `""` clears the greeting or instructions. An unknown
 `--sms` (on unless you pass `--no-sms`) lets the agent text the person on the
 call. Each agent holds its own sending key, limited to sending texts, which is
 revoked when the agent is deleted; `sendly voice agents update <agentId>` with
-no flags issues a new one if it was revoked. An agent that still answers a
+no flags issues a new one if it was revoked. `--transfer-to` sets a number in E.164
+format: a phone caller who asks for a person, once they confirm, is connected
+to it and the call ends with hangup class `transferred`; if the line is busy or
+nobody answers, the agent takes a message instead. `--transfer-to ""` turns
+transfers off. `--background-audio` plays quiet office ambience under the call. An agent that still answers a
 number cannot be deleted (`409 agent_in_use`, which lists the numbers): point
 those numbers at another agent or back to the team first with
 `sendly voice numbers update <number> --mode ring_dashboard`.
@@ -1425,7 +1433,7 @@ This opens a WebSocket session and displays:
 
 `--events` defaults to **every event type the API emits**, so nothing is missed during local development. Pass `--events` yourself to narrow the stream. The full set is:
 
-`message.sent`, `message.delivered`, `message.read`, `message.failed`, `message.bounced`, `message.retrying`, `message.received`, `message.opt_out`, `message.opt_in`, `verification.created`, `verification.delivered`, `verification.verified`, `verification.expired`, `verification.failed`, `verification.resent`, `verification.delivery_failed`, `conversation.created`, `conversation.updated`, `draft.created`, `draft.approved`, `draft.rejected`, `contact.auto_flagged`, `contact.marked_valid`, `contacts.lookup_completed`, `contacts.bulk_marked_valid`, `brand.verified`, `brand.failed`, `campaign.approved`, `campaign.rejected`, `campaign.suspended`, `assignment.confirmed`, `assignment.failed`, `rcs_brand.verified`, `rcs_brand.failed`, `rcs_agent.testing`, `rcs_agent.live`, `rcs_agent.rejected`, `rcs_agent.action_required`, `port.completed`, `port_out.requested`, `port_out.completed`, `port_out.rejected`, `port_out.cancelled`, `number.activated`, `number.failed`, `number.requirements_required`, `number.released`, `whatsapp_account.connected`, `whatsapp_account.failed`, `whatsapp_template.approved`, `whatsapp_template.rejected`, `whatsapp_template.paused`, `call.started`, `call.completed`, `call.recording.ready`, `short_code.action_required`, `short_code.rejected`, `short_code.filed`, `short_code.live`, `short_code.suspended`, `short_code.reactivated`, `short_code.payment_succeeded`, `short_code.payment_failed`.
+`message.sent`, `message.delivered`, `message.read`, `message.failed`, `message.bounced`, `message.retrying`, `message.received`, `message.opt_out`, `message.opt_in`, `verification.created`, `verification.delivered`, `verification.verified`, `verification.expired`, `verification.failed`, `verification.resent`, `verification.delivery_failed`, `conversation.created`, `conversation.updated`, `draft.created`, `draft.approved`, `draft.rejected`, `contact.auto_flagged`, `contact.marked_valid`, `contacts.lookup_completed`, `contacts.bulk_marked_valid`, `brand.verified`, `brand.failed`, `campaign.approved`, `campaign.rejected`, `campaign.suspended`, `assignment.confirmed`, `assignment.failed`, `rcs_brand.verified`, `rcs_brand.failed`, `rcs_agent.testing`, `rcs_agent.live`, `rcs_agent.rejected`, `rcs_agent.action_required`, `port.completed`, `port_out.requested`, `port_out.completed`, `port_out.rejected`, `port_out.cancelled`, `number.activated`, `number.failed`, `number.requirements_required`, `number.released`, `whatsapp_account.connected`, `whatsapp_account.failed`, `whatsapp_template.approved`, `whatsapp_template.rejected`, `whatsapp_template.paused`, `call.started`, `call.completed`, `call.recording.ready`, `short_code.action_required`, `short_code.rejected`, `short_code.filed`, `short_code.live`, `short_code.suspended`, `short_code.reactivated`, `short_code.cancelled`, `short_code.payment_succeeded`, `short_code.payment_failed`.
 
 #### Handling Lifecycle Events
 

@@ -28,6 +28,8 @@ export default class VoiceAgentsUpdate extends AuthenticatedCommand {
     "<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --voice edward --no-sms",
     "<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --disable",
     "<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --enable --json",
+    "<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --transfer-to +15125550100",
+    '<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --transfer-to ""',
   ];
 
   static args = {
@@ -69,6 +71,15 @@ export default class VoiceAgentsUpdate extends AuthenticatedCommand {
       description: "Switch the agent off",
       aliases: ["disabled"],
       exclusive: ["enable"],
+    }),
+    "transfer-to": Flags.string({
+      description:
+        'A number in E.164 format the agent transfers a phone caller to when they ask for a person, once they confirm ("" turns transfers off)',
+    }),
+    "background-audio": Flags.boolean({
+      description:
+        "Play quiet office ambience under the call (--no-background-audio turns it off)",
+      allowNo: true,
     }),
   };
 

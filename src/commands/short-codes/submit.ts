@@ -8,7 +8,7 @@ interface SubmitResponse {
   application: { reviewStatus: string };
   submitted?: boolean;
   alreadySubmitted?: boolean;
-  payment?: { status: "paid" | "waived"; charged: boolean };
+  payment?: { status: string; charged: boolean };
   billing?: { setupFee?: { amountCents?: number } };
 }
 

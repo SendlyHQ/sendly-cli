@@ -31,12 +31,14 @@ interface ApplicationView {
   editable: boolean;
   lockMessage: string | null;
   canStartNewApplication: boolean;
+  generatedDefaults?: { useCase?: string; optInFlow?: string } | null;
   requiredDocuments: string[];
   missingDocuments: string[];
   documents: DocumentState[];
   quote: {
     codeType: string;
     monthlyUsd: number | null;
+    setupUsd?: number;
     currency: string;
     monthlyCents?: number;
     setupCents?: number;
@@ -57,6 +59,7 @@ interface ApplicationView {
     };
     exempt: string | null;
   };
+  verification?: { verified: boolean; state: string; href: string };
   carriers: { approved: number; total: number; overall: string };
 }
 
@@ -85,7 +88,10 @@ const SETUP_FEE_STATES: Record<string, string> = {
 
 export function billingRows(view: ApplicationView): Array<[string, string]> {
   const rows: Array<[string, string]> = [];
-  const setupCents = view.billing?.setupFee.amountCents ?? view.quote.setupCents ?? 99900;
+  const setupCents =
+    view.billing?.setupFee.amountCents ??
+    view.quote.setupCents ??
+    (view.quote.setupUsd !== undefined ? view.quote.setupUsd * 100 : 99900);
   const status = view.billing?.setupFee.status ?? "unpaid";
   const paidOn = status === "paid" ? day(view.billing?.setupFee.paidAt) : null;
   rows.push([
@@ -116,6 +122,49 @@ export function billingRows(view: ApplicationView): Array<[string, string]> {
     ]);
   }
   return rows;
+}
+
+const VERIFICATION_STATES: Record<string, string> = {
+  verified: "verified",
+  in_review: "in review",
+  needs_attention: "needs attention",
+  not_started: "not started",
+};
+
+export function verificationRow(view: Pick<ApplicationView, "verification">): [string, string] | null {
+  const verification = view.verification;
+  if (!verification) return null;
+  const state = VERIFICATION_STATES[verification.state] ?? verification.state;
+  if (verification.verified) return ["Business verification", state];
+  return ["Business verification", `${state}. Submitting needs a verified business: ${verificationLink(verification.href)}`];
+}
+
+function verificationLink(href: string): string {
+  return href.startsWith("/") ? `https://sendly.live${href}` : href;
+}
+
+const SUGGESTED_FIELDS = [
+  { field: "useCase", flag: "--use-case" },
+  { field: "optInFlow", flag: "--opt-in-flow" },
+] as const;
+
+const INVISIBLE_CHARS = /[\u00AD\u061C\u200B-\u200F\u2060\u2066-\u2069\uFEFF]/g;
+
+function normaliseDraftText(value: unknown): string {
+  return (typeof value === "string" ? value : "")
+    .normalize("NFKC")
+    .replace(INVISIBLE_CHARS, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function uneditedSuggestions(view: Pick<ApplicationView, "application" | "generatedDefaults">): string[] {
+  const generated = view.generatedDefaults ?? {};
+  return SUGGESTED_FIELDS.filter(({ field }) => {
+    const suggestion = normaliseDraftText(generated[field]);
+    return suggestion !== "" && normaliseDraftText(view.application[field]) === suggestion;
+  }).map(({ flag }) => flag);
 }
 
 const DOCUMENT_LABELS: Record<string, string> = {
@@ -183,6 +232,8 @@ export default class ShortCodesApplication extends AuthenticatedCommand {
       ["Review", app.reviewStatus],
     ];
     rows.push(...billingRows(view));
+    const verification = verificationRow(view);
+    if (verification) rows.push(verification);
     rows.push([
       "Carriers",
       `${view.carriers.approved} of ${view.carriers.total} approved`,
@@ -191,6 +242,12 @@ export default class ShortCodesApplication extends AuthenticatedCommand {
 
     if (view.lockMessage) info(view.lockMessage);
     if (app.reviewNote) info(`Note from review: ${app.reviewNote}`);
+    const unedited = view.editable ? uneditedSuggestions(view) : [];
+    if (unedited.length > 0) {
+      info(
+        `Sendly suggested the wording of ${unedited.join(" and ")}. Edit it before you submit: ${colors.code("sendly short-codes update --help")}`,
+      );
+    }
 
     if (view.requiredDocuments.length > 0) {
       info("");

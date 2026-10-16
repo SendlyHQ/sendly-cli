@@ -74,18 +74,19 @@ function isKeyCheckBusy(error: unknown): error is RateLimitError {
   );
 }
 
+const NON_IDEMPOTENT_METHODS = new Set(["POST", "PATCH"]);
+
 /**
  * Check if an error is retryable (network errors, 5xx server errors, or an
  * API key check that was too busy to run)
  */
-function isRetryableError(error: unknown): boolean {
+function isRetryableError(error: unknown, method: string): boolean {
   // Network errors
   if (error instanceof TypeError && error.message.includes("fetch")) {
     return true;
   }
-  // Server errors (5xx) are retryable
   if (error instanceof ApiError && error.statusCode >= 500) {
-    return true;
+    return !NON_IDEMPOTENT_METHODS.has(method) || error.statusCode === 503;
   }
   return isKeyCheckBusy(error);
 }
@@ -99,6 +100,15 @@ const UPLOAD_HINTS: Record<string, string> = {
   file_too_large: "Use a smaller file",
   unsupported_media_type: "Use a file of a type this command accepts",
 };
+
+const UNCONFIRMED_SEND_HINT =
+  "It was marked failed and refunded, but it may still be delivered, so check with the recipient before sending it again, or it could arrive twice";
+
+const UNCONFIRMED_SEND_CODES = new Set([
+  "rcs_send_unconfirmed",
+  "short_code_send_unconfirmed",
+  "whatsapp_send_unconfirmed",
+]);
 
 function errorSentence(error: unknown): string | undefined {
   return typeof error === "string" &&
@@ -186,6 +196,7 @@ const LIVE_KEY_CODES = new Set([
   "live_key_required",
   "rcs_requires_live_key",
   "whatsapp_requires_live_key",
+  "short_code_requires_live_key",
 ]);
 
 export class ForbiddenError extends ApiError {
@@ -523,7 +534,7 @@ class ApiClient {
         if (
           options.retry === false
             ? !isKeyCheckBusy(error)
-            : !isRetryableError(error)
+            : !isRetryableError(error, method)
         ) {
           throw error;
         }
@@ -684,7 +695,9 @@ class ApiClient {
             ? "This is a server error. Try again later or check https://status.sendly.live"
             : Object.hasOwn(UPLOAD_HINTS, error)
               ? UPLOAD_HINTS[error]
-              : undefined;
+              : UNCONFIRMED_SEND_CODES.has(error)
+                ? UNCONFIRMED_SEND_HINT
+                : undefined;
         const apiError = new ApiError(
           error,
           message,
@@ -839,7 +852,7 @@ class ApiClient {
         if (
           options.retry === false
             ? !isKeyCheckBusy(error)
-            : !isRetryableError(error)
+            : !isRetryableError(error, "POST")
         ) {
           throw error;
         }

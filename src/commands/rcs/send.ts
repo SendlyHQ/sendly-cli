@@ -36,11 +36,17 @@ interface RcsSendResponse {
     agentId: string;
     agentName?: string;
     requestedChannel?: string;
+    fallbackReason?: string;
     suggestionsDropped?: boolean;
   };
   createdAt: string;
   metadata: Record<string, unknown>;
 }
+
+const FALLBACK_REASONS: Record<string, string> = {
+  not_rcs_capable: "the recipient can't receive RCS from this agent",
+  capability_check_failed: "the RCS capability check failed",
+};
 
 type RcsSuggestion =
   | { reply: { text: string; postbackData: string } }
@@ -94,7 +100,7 @@ export default class RcsSend extends AuthenticatedCommand {
   static examples = [
     '<%= config.bin %> rcs send --to +15125550190 --text "Your order shipped!"',
     '<%= config.bin %> rcs send --to +15125550190 --text "Need anything else?" --suggest-reply "Track order=TRACK" --suggest-url "View receipt=RECEIPT=https://example.com/r/4821"',
-    '<%= config.bin %> rcs send --to +15125550190 --card-title "Spring sale" --card-description "20% off everything this weekend" --card-media https://example.com/sale.jpg',
+    '<%= config.bin %> rcs send --to +15125550190 --card-title "Spring sale" --card-description "20% off everything this weekend" --card-media https://example.com/sale.jpg --type marketing',
     '<%= config.bin %> rcs send --to +15125550190 --text "RCS only please" --no-fallback',
   ];
 
@@ -144,6 +150,11 @@ export default class RcsSend extends AuthenticatedCommand {
       description:
         'Open-URL chip as "text=postback=url" (e.g. --suggest-url "View order=VIEW=https://example.com/o/4821"). Repeatable.',
       multiple: true,
+    }),
+    type: Flags.string({
+      description:
+        "Message type: transactional (default for RCS) or marketing. A marketing message is held to the recipient's quiet hours, on RCS and on an SMS fallback",
+      options: ["transactional", "marketing"],
     }),
     "no-fallback": Flags.boolean({
       description:
@@ -219,6 +230,7 @@ export default class RcsSend extends AuthenticatedCommand {
                 ...(suggestions.length > 0 && { suggestions }),
               }),
           ...(flags["no-fallback"] && { fallbackToSms: false }),
+          ...(flags.type && { messageType: flags.type }),
         },
         true,
         { idempotencyKey: flags["idempotency-key"] },
@@ -232,14 +244,18 @@ export default class RcsSend extends AuthenticatedCommand {
       }
 
       if (response.fellBackTo === "sms") {
-        success("Message queued as SMS — recipient doesn't support RCS", {
-          "Message ID": colors.code(response.id),
-          To: response.to,
-          From: response.from,
-          Status: formatStatus(response.status),
-          Segments: response.segments,
-          Credits: formatCredits(response.creditsUsed),
-        });
+        const reason = response.rcs?.fallbackReason;
+        success(
+          `Message queued as SMS — ${reason ? (FALLBACK_REASONS[reason] ?? reason) : "recipient doesn't support RCS"}`,
+          {
+            "Message ID": colors.code(response.id),
+            To: response.to,
+            From: response.from,
+            Status: formatStatus(response.status),
+            Segments: response.segments,
+            Credits: formatCredits(response.creditsUsed),
+          },
+        );
         if (response.rcs?.suggestionsDropped) {
           console.log();
           console.log(

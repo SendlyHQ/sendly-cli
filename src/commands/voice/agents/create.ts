@@ -27,6 +27,7 @@ export default class VoiceAgentsCreate extends AuthenticatedCommand {
     '<%= config.bin %> voice agents create --name "Front desk"',
     '<%= config.bin %> voice agents create --name "Front desk" --voice olivia --greeting "Thanks for calling Acme, how can I help?" --instructions "Answer questions about opening hours and take messages."',
     '<%= config.bin %> voice agents create --name "After hours" --no-sms --disabled --json',
+    '<%= config.bin %> voice agents create --name "Front desk" --transfer-to +15125550100 --background-audio',
   ];
 
   static flags = {
@@ -57,6 +58,15 @@ export default class VoiceAgentsCreate extends AuthenticatedCommand {
     disabled: Flags.boolean({
       description: "Create the agent switched off",
     }),
+    "transfer-to": Flags.string({
+      description:
+        'A number in E.164 format the agent transfers a phone caller to when they ask for a person, once they confirm ("" turns transfers off)',
+    }),
+    "background-audio": Flags.boolean({
+      description:
+        "Play quiet office ambience under the call (--no-background-audio turns it off)",
+      allowNo: true,
+    }),
   };
 
   async run(): Promise<void> {
@@ -77,6 +87,8 @@ export default class VoiceAgentsCreate extends AuthenticatedCommand {
       greeting: flags.greeting,
       instructions: flags.instructions,
       sms: flags.sms,
+      "transfer-to": flags["transfer-to"],
+      "background-audio": flags["background-audio"],
     });
 
     const createSpinner = spinner("Creating agent...");
