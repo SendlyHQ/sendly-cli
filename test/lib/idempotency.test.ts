@@ -36,12 +36,16 @@ import {
 const KEY_PATTERN =
   /^sendly-cli-retry-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-function mockResponse(data: unknown, status: number = 200) {
+function mockResponse(
+  data: unknown,
+  status: number = 200,
+  headers: Record<string, string> = {},
+) {
   return {
     ok: status >= 200 && status < 300,
     status,
     json: () => Promise.resolve(data),
-    headers: new Map(),
+    headers: new Map(Object.entries(headers)),
   };
 }
 
@@ -236,6 +240,51 @@ describe("Idempotency keys", () => {
       expect(err.code).toBe("rcs_send_failed");
       expect(err.message).toBe("The message couldn't be delivered.");
       expect(err.statusCode).toBe(502);
+    });
+
+    it("does not retry a send whose 503 the API sent in place of a 502, and keeps its code and message", async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(
+          {
+            error: "short_code_send_failed",
+            message: "The short code carrier did not take the message.",
+          },
+          503,
+          { "Sendly-Upstream-Status": "502" },
+        ),
+      );
+
+      const err = await apiClient
+        .post("/api/v1/messages", {
+          channel: "short_code",
+          to: "+15125550190",
+          text: "Hello",
+        })
+        .catch((e) => e);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.code).toBe("short_code_send_failed");
+      expect(err.message).toBe("The short code carrier did not take the message.");
+      expect(err.statusCode).toBe(503);
+      expect(err.upstreamStatus).toBe(502);
+    });
+
+    it("still retries a GET whose 503 the API sent in place of a 504", async () => {
+      mockFetch
+        .mockResolvedValueOnce(
+          mockResponse(
+            { error: "whatsapp_profile_fetch_failed", message: "Try again." },
+            503,
+            { "Sendly-Upstream-Status": "504" },
+          ),
+        )
+        .mockResolvedValueOnce(mockResponse({ about: "Hi" }));
+
+      const result = await apiClient.get("/api/v1/whatsapp/senders/+15125550190/profile");
+
+      expect(result).toEqual({ about: "Hi" });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     it("does not retry a POST the API answered with a 500, even with a caller key", async () => {

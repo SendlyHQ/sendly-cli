@@ -75,6 +75,7 @@ function isKeyCheckBusy(error: unknown): error is RateLimitError {
 }
 
 const NON_IDEMPOTENT_METHODS = new Set(["POST", "PATCH"]);
+const UPSTREAM_STATUS_HEADER = "Sendly-Upstream-Status";
 
 /**
  * Check if an error is retryable (network errors, 5xx server errors, or an
@@ -86,7 +87,8 @@ function isRetryableError(error: unknown, method: string): boolean {
     return true;
   }
   if (error instanceof ApiError && error.statusCode >= 500) {
-    return !NON_IDEMPOTENT_METHODS.has(method) || error.statusCode === 503;
+    if (!NON_IDEMPOTENT_METHODS.has(method)) return true;
+    return error.statusCode === 503 && error.upstreamStatus === undefined;
   }
   return isKeyCheckBusy(error);
 }
@@ -147,6 +149,7 @@ export class ApiError extends Error {
   public hint?: string;
   public fieldErrors?: ApiFieldError[];
   public body?: Record<string, unknown>;
+  public upstreamStatus?: number;
 
   constructor(
     public code: string,
@@ -523,7 +526,7 @@ class ApiClient {
         }
 
         if (!response.ok) {
-          this.handleError(response.status, data);
+          this.handleError(response.status, data, response.headers);
         }
 
         options.onStatus?.(response.status);
@@ -564,7 +567,7 @@ class ApiClient {
     }
   }
 
-  private handleError(statusCode: number, data: any): never {
+  private handleError(statusCode: number, data: any, headers?: Headers): never {
     try {
       this.throwForStatus(statusCode, data);
     } catch (thrown) {
@@ -575,6 +578,10 @@ class ApiClient {
         !Array.isArray(data)
       ) {
         thrown.body = data as Record<string, unknown>;
+      }
+      const upstream = Number(headers?.get(UPSTREAM_STATUS_HEADER));
+      if (thrown instanceof ApiError && Number.isInteger(upstream) && upstream > 0) {
+        thrown.upstreamStatus = upstream;
       }
       throw thrown;
     }
@@ -842,7 +849,7 @@ class ApiClient {
         }
 
         if (!response.ok) {
-          this.handleError(response.status, data);
+          this.handleError(response.status, data, response.headers);
         }
 
         return data as T;
