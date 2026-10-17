@@ -287,12 +287,16 @@ export default class RcsSend extends AuthenticatedCommand {
             ? "Cards have no SMS form — send a text message to reach non-RCS recipients"
             : "Drop --no-fallback to deliver to non-RCS recipients as SMS",
         });
-      } else if (err instanceof NotFoundError) {
+      } else if (
+        err instanceof NotFoundError &&
+        (err.code === "rcs_not_enabled" || err.code === "not_found")
+      ) {
         error(
           err.message === "Resource not found"
             ? "RCS isn't available on your workspace yet."
             : err.message,
           {
+            code: err.code,
             hint: "RCS is rolling out gradually — contact support@sendly.live for early access.",
           },
         );

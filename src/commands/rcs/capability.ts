@@ -66,12 +66,16 @@ export default class RcsCapability extends AuthenticatedCommand {
       checkSpinner.stop();
     } catch (err: any) {
       checkSpinner.stop();
-      if (err instanceof NotFoundError) {
+      if (
+        err instanceof NotFoundError &&
+        (err.code === "rcs_not_enabled" || err.code === "not_found")
+      ) {
         error(
           err.message === "Resource not found"
             ? "RCS isn't available on your workspace yet."
             : err.message,
           {
+            code: err.code,
             hint: "RCS is rolling out gradually — contact support@sendly.live for early access.",
           },
         );

@@ -92,4 +92,63 @@ describe("rcs send", () => {
     const run = await runCommand(RcsSend, ["--to", "+15125550190", "--text", "Your order shipped"]);
     expect(run.stdout).toContain("Message queued as SMS — the RCS capability check failed");
   });
+
+  it("shows the API's rcs_not_enabled code when RCS is off", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(404, {
+        error: "rcs_not_enabled",
+        message: "RCS isn't enabled for this account yet.",
+      }),
+    );
+    const run = await runCommand(RcsSend, ["--to", "+15125550190", "--text", "Hi"]);
+    expect(run.exitCode).toBe(1);
+    expect(JSON.parse(run.stderr)).toMatchObject({
+      message: "RCS isn't enabled for this account yet.",
+      code: "rcs_not_enabled",
+    });
+  });
+
+  it("reports an unknown --agent with the API's code, not the early-access hint", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(404, {
+        error: "rcs_not_found",
+        message: "No RCS agent with this id belongs to the workspace.",
+      }),
+    );
+    const run = await runCommand(RcsSend, [
+      "--to",
+      "+15125550190",
+      "--text",
+      "Hi",
+      "--agent",
+      "agent_missing",
+    ]);
+    expect(run.exitCode).toBe(1);
+    const reported = JSON.parse(run.stderr);
+    expect(reported).toMatchObject({
+      message: "No RCS agent with this id belongs to the workspace.",
+      code: "rcs_not_found",
+    });
+    expect(JSON.stringify(reported)).not.toContain("early access");
+  });
+
+  it("shows the API's code and suggestion for a 400", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(400, {
+        error: "rcs_invalid_content",
+        message: "A suggested reply is longer than 25 characters.",
+        suggestion: "Shorten the reply to 25 characters or fewer.",
+      }),
+    );
+    const run = await runCommand(RcsSend, ["--to", "+15125550190", "--text", "Hi"]);
+    expect(run.exitCode).toBe(1);
+    expect(JSON.parse(run.stderr)).toMatchObject({
+      message: "A suggested reply is longer than 25 characters.",
+      code: "rcs_invalid_content",
+      hint: "Shorten the reply to 25 characters or fewer.",
+    });
+  });
 });

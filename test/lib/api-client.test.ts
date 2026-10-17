@@ -476,6 +476,7 @@ describe("API Client", () => {
 
         expect(err).toBeInstanceOf(ValidationError);
         expect(err.message).toBe("HTTP 400");
+        expect(err.code).toBe("template_example_required");
       });
 
       it("prefers the message when the API sends one", async () => {
@@ -511,6 +512,88 @@ describe("API Client", () => {
 
         const coded = await refuse(404, { error: "not_found" });
         expect(coded.message).toBe("Resource not found");
+      });
+    });
+
+    describe("a 400 or 404 that carries the API's own code", () => {
+      const refuse = (status: number, body: unknown) => {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status,
+          json: () => Promise.resolve(body),
+          headers: new Map(),
+        });
+        return apiClient.post("/api/test", {}).then(
+          () => {
+            throw new Error("expected the request to fail");
+          },
+          (e: ApiError) => e,
+        );
+      };
+
+      it("keeps the code and message of a 404", async () => {
+        const err = await refuse(404, {
+          error: "rcs_not_enabled",
+          message: "RCS isn't enabled for this account yet.",
+        });
+
+        expect(err).toBeInstanceOf(NotFoundError);
+        expect(err.statusCode).toBe(404);
+        expect(err.code).toBe("rcs_not_enabled");
+        expect(err.message).toBe("RCS isn't enabled for this account yet.");
+        expect(err.hint).toBeUndefined();
+      });
+
+      it("keeps the code and message of a 400, with the API's suggestion as the hint", async () => {
+        const err = await refuse(400, {
+          error: "rcs_invalid_content",
+          message: "A suggested reply is longer than 25 characters.",
+          suggestion: "Shorten the reply to 25 characters or fewer.",
+        });
+
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.statusCode).toBe(400);
+        expect(err.code).toBe("rcs_invalid_content");
+        expect(err.message).toBe("A suggested reply is longer than 25 characters.");
+        expect(err.hint).toBe("Shorten the reply to 25 characters or fewer.");
+      });
+
+      it("prefers the API's hint over its suggestion", async () => {
+        const err = await refuse(404, {
+          error: "rcs_not_found",
+          message: "No agent with this id belongs to the workspace.",
+          hint: "List agents with `sendly rcs agents`",
+          suggestion: "Check the id",
+        });
+
+        expect(err.code).toBe("rcs_not_found");
+        expect(err.hint).toBe("List agents with `sendly rcs agents`");
+      });
+
+      it("keeps the generic code and hint when the body has no code", async () => {
+        const bare404 = await refuse(404, {});
+        expect(bare404.code).toBe("not_found");
+        expect(bare404.message).toBe("Resource not found");
+        expect(bare404.hint).toContain("Verify the ID is correct");
+
+        const bare400 = await refuse(400, { message: "Invalid phone number" });
+        expect(bare400.code).toBe("validation_error");
+        expect(bare400.message).toBe("Invalid phone number");
+        expect(bare400.hint).toContain("--help");
+
+        const unparsed = await refuse(400, null);
+        expect(unparsed.code).toBe("validation_error");
+        expect(unparsed.message).toBe("HTTP 400");
+      });
+
+      it("keeps the generic hint when the API's code is the generic one", async () => {
+        const err = await refuse(400, {
+          error: "validation_error",
+          message: "Invalid phone",
+        });
+
+        expect(err.code).toBe("validation_error");
+        expect(err.hint).toContain("--help");
       });
     });
   });

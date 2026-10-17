@@ -120,6 +120,30 @@ function errorSentence(error: unknown): string | undefined {
     : undefined;
 }
 
+function errorCode(error: unknown): string | undefined {
+  return typeof error === "string" && /^[a-z0-9_]+$/.test(error)
+    ? error
+    : undefined;
+}
+
+function serverHint(data: any): string | undefined {
+  for (const value of [data?.hint, data?.suggestion]) {
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return undefined;
+}
+
+function applyApiCode(err: ApiError, data: any): void {
+  const code = errorCode(data?.error);
+  const hint = serverHint(data);
+  if (code && code !== err.code) {
+    err.code = code;
+    err.hint = hint;
+  } else if (hint) {
+    err.hint = hint;
+  }
+}
+
 export interface ApiResponse<T> {
   data?: T;
   error?: {
@@ -649,6 +673,7 @@ class ApiClient {
       case 400: {
         const validation = new ValidationError(message, details);
         validation.fieldErrors = fieldErrors;
+        applyApiCode(validation, data);
         throw validation;
       }
       case 402:
@@ -681,13 +706,16 @@ class ApiClient {
           );
         }
         throw new InsufficientCreditsError(message);
-      case 404:
+      case 404: {
         // If the server sent neither a message nor a sentence, use
         // NotFoundError's friendly default ("Resource not found") rather than
         // a bare "HTTP 404".
-        throw new NotFoundError(
+        const notFound = new NotFoundError(
           data?.message || errorSentence(data?.error) || undefined,
         );
+        applyApiCode(notFound, data);
+        throw notFound;
+      }
       case 429: {
         const retryAfter = data?.retryAfter || 60;
         throw new RateLimitError(
