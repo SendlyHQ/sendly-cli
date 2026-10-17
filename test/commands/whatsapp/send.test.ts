@@ -94,3 +94,52 @@ describe("sendly whatsapp send refusals", () => {
     expect(out.hint).toMatch(/refused/i);
   });
 });
+
+describe("sendly whatsapp send --fallback-sms", () => {
+  const sent = {
+    id: "msg_wa",
+    channel: "whatsapp",
+    message_format: "whatsapp",
+    to: "+14155550177",
+    from: "+14155550123",
+    text: "Your table is ready!",
+    status: "failed",
+    segments: 1,
+    creditsUsed: 0,
+    whatsapp: { kind: "text", messageId: null },
+    createdAt: "2026-10-17T10:00:00.000Z",
+    metadata: {},
+    fallback: { channel: "sms", status: "sent", reason: "window_closed", messageId: "msg_sms", creditsUsed: 2 },
+  };
+
+  it("sends fallbackToSms and shows the SMS that went instead", async () => {
+    mockFetch.mockResolvedValueOnce(respond(201, sent));
+    const run = await runCommand(WhatsappSend, [...ARGS, "--fallback-sms"]);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.fallbackToSms).toBe(true);
+    expect(run.exitCode ?? 0).toBe(0);
+    expect(run.stdout).toContain("went as an SMS");
+    expect(run.stdout).toContain("msg_sms");
+  });
+
+  it("leaves fallbackToSms out without the flag", async () => {
+    mockFetch.mockResolvedValueOnce(respond(201, { ...sent, status: "sent", fallback: undefined }));
+    await runCommand(WhatsappSend, ARGS);
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).not.toHaveProperty("fallbackToSms");
+  });
+
+  it("explains a refusal that nothing was sent", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(403, {
+        error: "sms_fallback_unavailable",
+        message: "+14155550123 isn't set up to send SMS yet.",
+        suggestion: "Send without fallbackToSms",
+      }),
+    );
+    const run = await runCommand(WhatsappSend, [...ARGS, "--fallback-sms"]);
+    const out = JSON.parse(run.stderr);
+    expect(out.code).toBe("sms_fallback_unavailable");
+    expect(out.hint).toContain("Nothing was sent");
+  });
+});

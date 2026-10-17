@@ -34,6 +34,15 @@ interface WhatsappSendResponse {
   };
   createdAt: string;
   metadata: Record<string, unknown>;
+  fallback?: {
+    channel: "sms";
+    status: string;
+    reason?: string;
+    messageId?: string;
+    creditsUsed?: number;
+    error?: string;
+    contentDropped?: string[];
+  };
 }
 
 /** Parse repeatable n=value pairs into a template-variables record. */
@@ -60,6 +69,7 @@ export default class WhatsappSend extends AuthenticatedCommand {
     '<%= config.bin %> whatsapp send --to +15551234567 --from +15559876543 --text "Your table is ready!"',
     "<%= config.bin %> whatsapp send --to +447700900123 --from +15559876543 --template order_shipped --language en_US --var 1=TinyFat --var 2=4821",
     '<%= config.bin %> whatsapp send --to +15551234567 --from +15559876543 --text "Hello!" --json',
+    '<%= config.bin %> whatsapp send --to +15551234567 --from +18885550190 --text "Your table is ready!" --fallback-sms',
   ];
 
   static flags = {
@@ -93,6 +103,11 @@ export default class WhatsappSend extends AuthenticatedCommand {
         "Template variable as n=value (e.g. --var 1=TinyFat). Repeatable.",
       multiple: true,
       dependsOn: ["template"],
+    }),
+    "fallback-sms": Flags.boolean({
+      description:
+        "If WhatsApp can't deliver the message, send it as an SMS from the same number (US and Canada; the number must already be able to send SMS). Not for marketing or authentication templates.",
+      default: false,
     }),
     "idempotency-key": Flags.string({
       description:
@@ -143,6 +158,7 @@ export default class WhatsappSend extends AuthenticatedCommand {
                   ...(variables && { variables }),
                 },
               }),
+          ...(flags["fallback-sms"] && { fallbackToSms: true }),
         },
         true,
         { idempotencyKey: flags["idempotency-key"] },
@@ -155,7 +171,9 @@ export default class WhatsappSend extends AuthenticatedCommand {
         return;
       }
 
-      success("WhatsApp message queued", {
+      const fb = response.fallback;
+      const wentAsSms = fb?.status === "sent" && response.status === "failed";
+      success(wentAsSms ? "WhatsApp couldn't take it, so it went as an SMS" : "WhatsApp message queued", {
         "Message ID": colors.code(response.id),
         To: response.to,
         From: response.from,
@@ -165,6 +183,11 @@ export default class WhatsappSend extends AuthenticatedCommand {
         }),
         Status: formatStatus(response.status),
         Credits: formatCredits(response.creditsUsed),
+        ...(fb && {
+          "SMS fallback": fb.messageId
+            ? `${fb.status} (${colors.code(fb.messageId)}${typeof fb.creditsUsed === "number" ? `, ${formatCredits(fb.creditsUsed)}` : ""})`
+            : fb.status,
+        }),
       });
     } catch (err: any) {
       sendSpinner.stop();
@@ -196,6 +219,15 @@ export default class WhatsappSend extends AuthenticatedCommand {
             err.statusCode >= 500
               ? "Not sent, safe to send again. The credits were refunded."
               : "The carrier refused this message, so sending it again won't help. The credits were refunded.",
+        });
+      } else if (
+        err instanceof ApiError &&
+        (err.code === "sms_fallback_unavailable" ||
+          err.code === "sms_fallback_not_supported")
+      ) {
+        error(err.message, {
+          code: err.code,
+          hint: "Nothing was sent. Send without --fallback-sms, or fix the SMS side first.",
         });
       } else if (
         err instanceof ApiError &&
