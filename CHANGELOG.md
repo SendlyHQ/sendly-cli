@@ -1,5 +1,16 @@
 # @sendly/cli
 
+## 4.4.0
+
+### Minor Changes
+
+- **WhatsApp to SMS fallback.** `sendly whatsapp send --fallback-sms` asks the API to send the message as an SMS from the same number when WhatsApp can't deliver it (closed 24-hour window, a refusal, or undeliverable later). The output says when it went as an SMS and shows the SMS message id and credits, and `--json` returns the `fallback` object. A refusal before anything is sent is `403 sms_fallback_unavailable` or `422 sms_fallback_not_supported`, and the hint says nothing was sent.
+
+### Patch Changes
+
+- A failed `sendly whatsapp send` keeps what the API returned with it: on `422 whatsapp_window_closed`, the WhatsApp message's `id`, `windowExpiredAt` and, with `--fallback-sms`, the `fallback`; on `422 whatsapp_send_failed`, `errorCode` and `fallback`. In human output the fallback reads `SMS failed — <reason>`, and the hint no longer says to send a template when `--fallback-sms` was set and the SMS failed too.
+- Errors keep the API's code. A 400 or 404 now shows the code and hint the API sent, such as `rcs_not_enabled` or `rcs_not_found`, instead of a generic `validation_error` or `not_found`. The generic code is used only when the response names none.
+
 ## 4.3.0
 
 ### Minor Changes
