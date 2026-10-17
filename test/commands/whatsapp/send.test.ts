@@ -143,3 +143,65 @@ describe("sendly whatsapp send --fallback-sms", () => {
     expect(out.hint).toContain("Nothing was sent");
   });
 });
+
+describe("sendly whatsapp send failures with --fallback-sms", () => {
+  const windowClosed = {
+    error: "whatsapp_window_closed",
+    message: "The 24-hour window is closed.",
+    id: "msg_wa_1",
+    windowExpiredAt: "2026-10-17T09:00:00.000Z",
+    fallback: {
+      channel: "sms",
+      status: "failed",
+      reason: "window_closed",
+      error: "Credits ran out",
+    },
+  };
+
+  it("keeps the message id, window time and fallback in --json", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(respond(422, windowClosed));
+    const run = await runCommand(WhatsappSend, [...ARGS, "--fallback-sms"]);
+    const out = JSON.parse(run.stderr);
+    expect(out.code).toBe("whatsapp_window_closed");
+    expect(out.id).toBe("msg_wa_1");
+    expect(out.windowExpiredAt).toBe("2026-10-17T09:00:00.000Z");
+    expect(out.fallback.status).toBe("failed");
+    expect(out.hint).toContain("SMS fallback didn't go either");
+  });
+
+  it("says the SMS failed too in human output", async () => {
+    mockFetch.mockResolvedValueOnce(respond(422, windowClosed));
+    const run = await runCommand(WhatsappSend, [...ARGS, "--fallback-sms"]);
+    expect(run.stderr).toContain("SMS failed — Credits ran out");
+    expect(run.stderr).toContain("msg_wa_1");
+  });
+
+  it("keeps errorCode and the fallback on a refused send", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(422, {
+        error: "whatsapp_send_failed",
+        message: "The message couldn't be delivered.",
+        errorCode: "E026",
+        fallback: { channel: "sms", status: "skipped", reason: "whatsapp_refused" },
+      }),
+    );
+    const run = await runCommand(WhatsappSend, [...ARGS, "--fallback-sms"]);
+    const out = JSON.parse(run.stderr);
+    expect(out.errorCode).toBe("E026");
+    expect(out.fallback.status).toBe("skipped");
+    expect(out.hint).toContain("SMS fallback didn't go either");
+  });
+
+  it("still points at templates when no fallback was asked for", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(422, { error: "whatsapp_window_closed", message: "The 24-hour window is closed." }),
+    );
+    const run = await runCommand(WhatsappSend, ARGS);
+    const out = JSON.parse(run.stderr);
+    expect(out.hint).toContain("send an approved template instead");
+    expect(out.fallback).toBeUndefined();
+  });
+});

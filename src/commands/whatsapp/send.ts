@@ -193,14 +193,21 @@ export default class WhatsappSend extends AuthenticatedCommand {
       sendSpinner.stop();
 
       if (err instanceof ApiError && err.code === "whatsapp_window_closed") {
+        const smsFailed = !!err.body?.fallback;
         error(err.message, {
-          hint: "outside the 24-hour reply window — send an approved template instead",
+          code: err.code,
+          ...failureDetails(err),
+          hint: smsFailed
+            ? "Outside the 24-hour reply window, and the SMS fallback didn't go either. Send an approved template instead."
+            : "outside the 24-hour reply window — send an approved template instead",
         });
-        console.error(
-          colors.dim(
-            `  e.g. ${colors.code(`sendly whatsapp send --to ${flags.to} --from ${flags.from} --template <name> --language en_US`)}`,
-          ),
-        );
+        if (!isJsonMode()) {
+          console.error(
+            colors.dim(
+              `  e.g. ${colors.code(`sendly whatsapp send --to ${flags.to} --from ${flags.from} --template <name> --language en_US`)}`,
+            ),
+          );
+        }
       } else if (
         err instanceof ApiError &&
         err.code === "whatsapp_send_unconfirmed"
@@ -215,10 +222,13 @@ export default class WhatsappSend extends AuthenticatedCommand {
       ) {
         error(err.message, {
           code: err.code,
+          ...failureDetails(err),
           hint:
             err.statusCode >= 500
               ? "Not sent, safe to send again. The credits were refunded."
-              : "The carrier refused this message, so sending it again won't help. The credits were refunded.",
+              : err.body?.fallback
+                ? "WhatsApp refused this message and the SMS fallback didn't go either. The credits were refunded."
+                : "The carrier refused this message, so sending it again won't help. The credits were refunded.",
         });
       } else if (
         err instanceof ApiError &&
@@ -258,4 +268,29 @@ export default class WhatsappSend extends AuthenticatedCommand {
       this.exit(1);
     }
   }
+}
+
+function failureDetails(err: ApiError): Record<string, unknown> {
+  const body = err.body ?? {};
+  const fallback =
+    body.fallback && typeof body.fallback === "object"
+      ? (body.fallback as Record<string, unknown>)
+      : null;
+  return {
+    ...(typeof body.id === "string" && { id: body.id }),
+    ...(typeof body.errorCode === "string" && { errorCode: body.errorCode }),
+    ...(typeof body.windowExpiredAt === "string" && {
+      windowExpiredAt: body.windowExpiredAt,
+    }),
+    ...(fallback && {
+      fallback: isJsonMode() ? fallback : describeFallback(fallback),
+    }),
+  };
+}
+
+function describeFallback(fallback: Record<string, unknown>): string {
+  const parts = [`SMS ${String(fallback.status ?? "unknown")}`];
+  if (typeof fallback.messageId === "string") parts.push(fallback.messageId);
+  if (typeof fallback.error === "string" && fallback.error) parts.push(fallback.error);
+  return parts.join(" — ");
 }
