@@ -827,9 +827,7 @@ sendly rcs capability --to "+15125550190"
 
 Connect a number you own to WhatsApp and message customers over it —
 free-form text inside the 24-hour reply window, approved templates any time.
-One-time $19 connection fee, no monthly fee. If the connection fails, the
-$19 fee is refunded automatically; once a number has connected, a later
-disconnect gets nothing back.
+Connecting a number is free, with no monthly fee.
 
 `whatsapp send` goes through `POST /v1/messages` with channel `whatsapp` and
 needs `sms:send`, not `whatsapp:write`, and a live key. Reads (`whatsapp
@@ -859,28 +857,28 @@ sendly whatsapp connect --number "+15125550188"
 Prints a secure link a person must open and sign in with Facebook to finish
 connecting. WhatsApp then activates the number. Activation usually takes a
 few minutes but can take hours. If it hasn't finished about 6 hours after the
-session began, the session fails with `registration_timeout` and the fee is
-refunded. The command waits up to 20 minutes; if the
+session began, the session fails with `registration_timeout`. The command
+waits up to 20 minutes; if the
 number is still activating when it stops, it says the sign-in is done and to
 check with `sendly whatsapp status <id>`. With `--json` it prints the link and
 the signup id instead of waiting, so you can poll with `whatsapp status`.
 
-When connections are unavailable the API answers `503 whatsapp_unavailable`
-before charging anything, with `retryAfter: 3600` in the body and a
-`Retry-After: 3600` header. Only signup returns it; no send does. The command says nothing was charged and when to try
+When connections are unavailable the API answers `503 whatsapp_unavailable`,
+with `retryAfter: 3600` in the body and a
+`Retry-After: 3600` header. Only signup returns it; no send does. The command says when to try
 again (`code` and `retryAfter` in `--json`). After too many failed attempts in
 24 hours it answers `429 whatsapp_signup_limit_reached`, which is not worth
 retrying that day: check why the last attempt failed with
 `sendly whatsapp status`, then try again tomorrow or contact
-support@sendly.live. Each failed attempt's fee is refunded.
+support@sendly.live.
 
 #### Add a Number to a Connected Business Account
 
 Once one number is connected, you can add more numbers to the same WhatsApp
 Business account without the Facebook step. WhatsApp sends a 6-digit code to
 the new number, by text (the default) or voice call. `sendly whatsapp senders`
-shows each connected number's business account id. The same one-time $19 fee
-applies, and it is refunded automatically if the attempt fails.
+shows each connected number's business account id. Adding a number is free,
+like a Facebook connection.
 
 ```bash
 sendly whatsapp connect --number "+15125550142" --business-account 104996582519384
@@ -904,7 +902,7 @@ sendly whatsapp resend-code --verification-method voice
 `verify` and `resend-code` default to your most recent connection attempt on
 this machine; pass the signup id to choose another. Running
 `connect --business-account` again for a number that is already being added
-returns that attempt with no new charge and no new code; `resend-code` asks for
+returns that attempt with no new code; `resend-code` asks for
 another code. Until a code has been entered, `whatsapp status` (and `verify`
 without `--code`) keeps showing the earlier code after `resend-code` until the
 new one arrives, so wait until the code shown changes, or pass it with `--code`. Five wrong codes end the
@@ -915,14 +913,14 @@ for example `whatsapp_business_account_not_found` (no connected account with
 that id in this workspace), `display_name_required` (pass `--display-name`),
 `whatsapp_signup_in_progress` (a Facebook connection for the number is in
 flight), `whatsapp_verification_start_failed` (`422` when WhatsApp refused the
-number, `502` when it couldn't be reached; the fee is refunded either way),
+number, `503` when it couldn't be reached),
 `whatsapp_verification_resend_too_soon` (with `retryAfter` in seconds) and
 `whatsapp_activation_pending` (WhatsApp accepted the code but the connection
 didn't finish; don't start again, check `whatsapp status` shortly).
 
 `connect --business-account`, `verify` and `profile upload-photo` never retry
 a request on their own, not even after a server error or a dropped connection:
-a second start could charge the fee again, and every code submission uses one
+a second start could begin another attempt, and every code submission uses one
 of the five attempts. Run the command again yourself once you know what
 happened. While a number is being added by code, `whatsapp connect` without
 `--business-account` answers `409 whatsapp_verification_in_progress` with the
@@ -972,9 +970,69 @@ Refusals keep the API's code:
 
 - `422 whatsapp_window_closed`: the 24-hour reply window is closed; send an approved template instead.
 - `422 whatsapp_template_not_approved`: the template is not approved (check with `sendly whatsapp templates list`).
-- `whatsapp_send_failed`: `422` when the carrier refused the message, which is final (cached under the idempotency key and replayed for 24 hours), or `502` when it could not be reached: not sent, safe to send again. A `502` is never cached, and the CLI retries it under the same idempotency key. The credits for a failed send are refunded.
+- `whatsapp_send_failed`: `422` when the carrier refused the message, which is final (cached under the idempotency key and replayed for 24 hours), or `503` when it never reached WhatsApp: not sent, safe to resend under the same idempotency key. A `503` is never cached, and the CLI does not retry this one on its own, so run the command again with the same `--idempotency-key`. The credits for a failed send are refunded. With `--fallback-sms`, a `422` means the SMS couldn't go either; see [Fall Back to SMS](#fall-back-to-sms).
 - `409 whatsapp_send_unconfirmed`: the outcome is unknown. The message was marked failed and refunded, but it may still be delivered, so check before sending it again, or it could arrive twice. It is cached under the idempotency key, and the CLI does not retry it.
 - `403 whatsapp_not_enabled`: WhatsApp is not enabled for the key's owner.
+
+#### Fall Back to SMS
+
+Add `--fallback-sms` and a WhatsApp message that can't be delivered goes as an
+SMS from the same number instead.
+
+```bash
+sendly whatsapp send --to "+15125550123" --from "+15125550188" \
+  --text "Your table is ready!" --fallback-sms --idempotency-key table-ready-4821
+
+# When the window was closed and the SMS went:
+# ✓ WhatsApp couldn't take it, so it went as an SMS
+#   Message ID: 3b9e1f4a-6c2d-4e8b-a7f1-0d5c9b2e4a68
+#   Status: failed
+#   Credits: 0 credits
+#   SMS fallback: sent (7e4a2c1b-9d3f-4b6a-8e5c-2f1a0b9d7c34, 2 credits)
+
+# The SMS itself; its fallbackOf is the WhatsApp message's id
+sendly sms get 7e4a2c1b-9d3f-4b6a-8e5c-2f1a0b9d7c34 --json
+```
+
+`SMS fallback` is the fallback's status: `pending`, `sent`, `failed`,
+`unavailable` or `skipped`. `--json` prints the whole response, with
+`fallback.reason` (`window_closed`, `whatsapp_refused` or `whatsapp_failed`).
+When the SMS couldn't go either, the command exits 1 with the API's code
+(`whatsapp_window_closed` or `whatsapp_send_failed`) and a `fallback` line
+saying why; a closed window also shows the WhatsApp message's `id`.
+`sms_fallback_unavailable` (403) and `sms_fallback_not_supported` (422) mean
+nothing was sent: send without `--fallback-sms`, or fix the SMS side first.
+
+- It falls back when the 24-hour window is closed (the SMS goes at once:
+  free-form text and media go only within 24 hours of the customer's last
+  message, templates any time), when WhatsApp refuses the message, or when
+  WhatsApp reports it undeliverable later. Never after WhatsApp reports it
+  delivered or read, and at most once per message.
+- The number must already be able to send SMS to the recipient (a verified
+  toll-free number, or a local number on a 10DLC campaign, to a US or Canada
+  number), or the send is refused with 403 `sms_fallback_unavailable`
+  before anything is sent.
+- Marketing and authentication templates, and media without a caption, can't
+  fall back: 422 `sms_fallback_not_supported`. A utility template falls
+  back as its text header, body and footer with the variables filled in, and
+  its URL and phone buttons as `label: target`; quick replies are dropped and
+  listed in `fallback.contentDropped`.
+- Billing: the WhatsApp charge is refunded (a closed window is never charged)
+  and the SMS is billed as an SMS. A message that fell back at once comes
+  back with `status` `failed`, `creditsUsed` 0 and `fallback.status` `sent`; `fallback.creditsUsed` is
+  what the SMS cost.
+- No SMS goes on a 409 `whatsapp_send_unconfirmed` or a 503
+  `whatsapp_send_failed`. The status is `unavailable` when SMS rules stop it
+  (the contact opted out, a promotional-looking text in the recipient's quiet
+  hours, restricted content), with the reason in `fallback.error`, and
+  `skipped` for a WhatsApp error an SMS can't fix.
+- There is no time-based fallback: a message WhatsApp accepted but hasn't
+  delivered, for example to a phone that is off, stays `pending`, and no SMS
+  goes unless WhatsApp later reports a failure.
+- `sendly sms get <id> --json` and `sendly sms list --json` return the same fallback on the WhatsApp message, so check a
+  pending one later. The SMS carries `fallbackOf`, the WhatsApp message's id.
+
+Guide: [Send WhatsApp with an SMS Fallback](https://sendly.live/docs/whatsapp/send-with-fallback).
 
 #### Manage Templates
 
@@ -1029,7 +1087,7 @@ sendly whatsapp profile remove-photo "+15125550188"
 
 A file that isn't a JPEG or PNG, or is over 5 MB, is refused before it is
 uploaded. When WhatsApp refuses the image the API answers
-`502 whatsapp_profile_update_failed`; fix the image and try again.
+`503 whatsapp_profile_update_failed`; fix the image and try again.
 
 #### Ice Breakers and Commands
 

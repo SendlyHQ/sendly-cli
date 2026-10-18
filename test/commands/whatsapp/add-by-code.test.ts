@@ -210,13 +210,13 @@ describe("sendly whatsapp connect --business-account", () => {
     expect(run.stderr).toContain("--business-account");
   });
 
-  it("does not retry a failed start, which would charge the fee again", async () => {
+  it("does not retry a failed start, which would send a second code", async () => {
     settings.maxRetries = 1;
     mockFetch.mockResolvedValue(
       respond(502, {
         error: "whatsapp_verification_start_failed",
         message:
-          "WhatsApp couldn't start verifying this number. Any setup fee is refunded automatically. Please try again shortly.",
+          "WhatsApp couldn't start verifying this number. Please try again shortly.",
       }),
     );
 
@@ -523,7 +523,7 @@ describe("sendly whatsapp verify", () => {
       respond(409, {
         error: "whatsapp_verification_failed",
         message:
-          "Too many wrong codes. Any setup fee is refunded automatically. Start again to retry.",
+          "Too many wrong codes. Start again to retry.",
       }),
     );
 

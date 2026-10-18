@@ -83,7 +83,7 @@ function explainStartRefusal(err: unknown): StartRefusal | undefined {
       message: err.message,
       details: {
         code,
-        hint: "Each failed attempt was refunded. Check why the last one failed with `sendly whatsapp status`, then try again tomorrow or contact support@sendly.live.",
+        hint: "Check why the last one failed with `sendly whatsapp status`, then try again tomorrow or contact support@sendly.live.",
       },
     };
   }
@@ -103,7 +103,7 @@ function explainStartRefusal(err: unknown): StartRefusal | undefined {
 
 export default class WhatsappConnect extends AuthenticatedCommand {
   static description =
-    "Connect one of your numbers to WhatsApp. Prints a secure link a person must open and sign in with Facebook to finish; the command then waits until the sender is active. With --business-account it instead adds the number to a WhatsApp Business account already connected in this workspace, with no Facebook step: WhatsApp sends a 6-digit code to the number, which you enter with `sendly whatsapp verify`; that request is never retried automatically, so a failed start can't charge the fee twice. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner or admin. One-time $19 connection fee, no monthly fee. If the connection fails, the $19 fee is refunded automatically.";
+    "Connect one of your numbers to WhatsApp. Prints a secure link a person must open and sign in with Facebook to finish; the command then waits until the sender is active. With --business-account it instead adds the number to a WhatsApp Business account already connected in this workspace, with no Facebook step: WhatsApp sends a 6-digit code to the number, which you enter with `sendly whatsapp verify`; that request is never retried automatically, so a failed start can't send a second code. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner or admin. Connecting a number is free, with no monthly fee.";
 
   static examples = [
     "<%= config.bin %> whatsapp connect --number +15551234567",
@@ -230,7 +230,7 @@ export default class WhatsappConnect extends AuthenticatedCommand {
 
     if (final === "timeout_registering") {
       warn(
-        `We stopped waiting, but the Facebook sign-in is done: WhatsApp is still activating the number. Activation usually takes a few minutes but can take hours. If it hasn't finished about 6 hours after the session began, the session fails with registration_timeout and the fee is refunded. Check with \`sendly whatsapp status ${response.id}\`.`,
+        `We stopped waiting, but the Facebook sign-in is done: WhatsApp is still activating the number. Activation usually takes a few minutes but can take hours. If it hasn't finished about 6 hours after the session began, the session fails with registration_timeout. Check with \`sendly whatsapp status ${response.id}\`.`,
       );
       return;
     }
@@ -268,7 +268,7 @@ export default class WhatsappConnect extends AuthenticatedCommand {
       ...(final.failureReasons?.length && {
         reasons: final.failureReasons.join("; "),
       }),
-      hint: "If the connection fails, the $19 fee is refunded automatically. Re-run `sendly whatsapp connect` to try again.",
+      hint: "Re-run `sendly whatsapp connect` to try again.",
     });
     this.exit(1);
   }
@@ -372,7 +372,7 @@ export default class WhatsappConnect extends AuthenticatedCommand {
     );
     console.log(
       colors.dim(
-        `No code? ${colors.code(`sendly whatsapp resend-code ${response.id} --verification-method voice`)}. An attempt left untouched for about an hour expires and the fee is refunded.`,
+        `No code? ${colors.code(`sendly whatsapp resend-code ${response.id} --verification-method voice`)}. An attempt left untouched for about an hour expires.`,
       ),
     );
   }

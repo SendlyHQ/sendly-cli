@@ -222,7 +222,7 @@ export function reportWhatsappError(
       return report(
         err.statusCode === 422
           ? "Check the number isn't registered with another WhatsApp account and the display name is allowed, then run the command again."
-          : "The fee is refunded. Run the command again shortly to start over.",
+          : "Run the command again shortly to start over.",
       );
     case "payment_failed":
       return report(
@@ -246,7 +246,7 @@ export function reportWhatsappError(
           : {},
       );
     case "whatsapp_verification_failed":
-      return report(`The fee is refunded. ${START_AGAIN}`);
+      return report(START_AGAIN);
     case "whatsapp_verification_busy":
       return report("Try again in a moment.");
     case "whatsapp_verification_unavailable":
