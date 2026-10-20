@@ -827,7 +827,10 @@ sendly rcs capability --to "+15125550190"
 
 Connect a number you own to WhatsApp and message customers over it —
 free-form text inside the 24-hour reply window, approved templates any time.
-Connecting a number is free, with no monthly fee.
+Connecting a number costs a one-time $9.99 connection fee per number, charged
+to your card when you start connecting it, with no monthly fee. If the
+connection fails, the $9.99 fee is refunded automatically; once a number has
+connected, the fee isn't refundable and a later disconnect gets nothing back.
 
 `whatsapp send` goes through `POST /v1/messages` with channel `whatsapp` and
 needs `sms:send`, not `whatsapp:write`, and a live key. Reads (`whatsapp
@@ -857,28 +860,28 @@ sendly whatsapp connect --number "+15125550188"
 Prints a secure link a person must open and sign in with Facebook to finish
 connecting. WhatsApp then activates the number. Activation usually takes a
 few minutes but can take hours. If it hasn't finished about 6 hours after the
-session began, the session fails with `registration_timeout`. The command
-waits up to 20 minutes; if the
+session began, the session fails with `registration_timeout` and the fee is
+refunded. The command waits up to 20 minutes; if the
 number is still activating when it stops, it says the sign-in is done and to
 check with `sendly whatsapp status <id>`. With `--json` it prints the link and
 the signup id instead of waiting, so you can poll with `whatsapp status`.
 
-When connections are unavailable the API answers `503 whatsapp_unavailable`,
-with `retryAfter: 3600` in the body and a
-`Retry-After: 3600` header. Only signup returns it; no send does. The command says when to try
+When connections are unavailable the API answers `503 whatsapp_unavailable`
+before charging anything, with `retryAfter: 3600` in the body and a
+`Retry-After: 3600` header. Only signup returns it; no send does. The command says nothing was charged and when to try
 again (`code` and `retryAfter` in `--json`). After too many failed attempts in
 24 hours it answers `429 whatsapp_signup_limit_reached`, which is not worth
 retrying that day: check why the last attempt failed with
 `sendly whatsapp status`, then try again tomorrow or contact
-support@sendly.live.
+support@sendly.live. Each failed attempt's fee is refunded.
 
 #### Add a Number to a Connected Business Account
 
 Once one number is connected, you can add more numbers to the same WhatsApp
 Business account without the Facebook step. WhatsApp sends a 6-digit code to
 the new number, by text (the default) or voice call. `sendly whatsapp senders`
-shows each connected number's business account id. Adding a number is free,
-like a Facebook connection.
+shows each connected number's business account id. The same one-time $9.99 fee
+applies, and it is refunded automatically if the attempt fails.
 
 ```bash
 sendly whatsapp connect --number "+15125550142" --business-account 104996582519384
@@ -902,7 +905,7 @@ sendly whatsapp resend-code --verification-method voice
 `verify` and `resend-code` default to your most recent connection attempt on
 this machine; pass the signup id to choose another. Running
 `connect --business-account` again for a number that is already being added
-returns that attempt with no new code; `resend-code` asks for
+returns that attempt with no new charge and no new code; `resend-code` asks for
 another code. Until a code has been entered, `whatsapp status` (and `verify`
 without `--code`) keeps showing the earlier code after `resend-code` until the
 new one arrives, so wait until the code shown changes, or pass it with `--code`. Five wrong codes end the
@@ -913,14 +916,14 @@ for example `whatsapp_business_account_not_found` (no connected account with
 that id in this workspace), `display_name_required` (pass `--display-name`),
 `whatsapp_signup_in_progress` (a Facebook connection for the number is in
 flight), `whatsapp_verification_start_failed` (`422` when WhatsApp refused the
-number, `503` when it couldn't be reached),
+number, `503` when it couldn't be reached; the fee is refunded either way),
 `whatsapp_verification_resend_too_soon` (with `retryAfter` in seconds) and
 `whatsapp_activation_pending` (WhatsApp accepted the code but the connection
 didn't finish; don't start again, check `whatsapp status` shortly).
 
 `connect --business-account`, `verify` and `profile upload-photo` never retry
 a request on their own, not even after a server error or a dropped connection:
-a second start could begin another attempt, and every code submission uses one
+a second start could charge the fee again, and every code submission uses one
 of the five attempts. Run the command again yourself once you know what
 happened. While a number is being added by code, `whatsapp connect` without
 `--business-account` answers `409 whatsapp_verification_in_progress` with the

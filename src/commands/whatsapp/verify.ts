@@ -19,7 +19,7 @@ import {
 
 export default class WhatsappVerify extends AuthenticatedCommand {
   static description =
-    "Enter the 6-digit code WhatsApp sent to a number you are adding with `whatsapp connect --business-account`. Without --code it submits the code that already arrived on the number, if one has; right after `resend-code`, before any code has been entered, that can still be the earlier code until the new one arrives, so pass --code then. Five wrong codes end the attempt. The request is never retried automatically, because each one uses an attempt. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner or admin.";
+    "Enter the 6-digit code WhatsApp sent to a number you are adding with `whatsapp connect --business-account`. Without --code it submits the code that already arrived on the number, if one has; right after `resend-code`, before any code has been entered, that can still be the earlier code until the new one arrives, so pass --code then. Five wrong codes end the attempt and refund the fee. The request is never retried automatically, because each one uses an attempt. Needs a live API key with the whatsapp:write scope and, in a team workspace, an owner or admin.";
 
   static examples = [
     "<%= config.bin %> whatsapp verify --code 482913",

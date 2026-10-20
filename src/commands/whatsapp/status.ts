@@ -113,7 +113,7 @@ export default class WhatsappStatus extends AuthenticatedCommand {
       console.log();
       console.log(
         colors.dim(
-          "The Facebook sign-in is done and WhatsApp is activating the number. Activation usually takes a few minutes but can take hours. If it hasn't finished about 6 hours after the session began, the session fails with registration_timeout. Run this command again to check.",
+          "The Facebook sign-in is done and WhatsApp is activating the number. Activation usually takes a few minutes but can take hours. If it hasn't finished about 6 hours after the session began, the session fails with registration_timeout and the fee is refunded. Run this command again to check.",
         ),
       );
     } else if (response.status === "initiated") {
