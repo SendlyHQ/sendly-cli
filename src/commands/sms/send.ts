@@ -1,5 +1,6 @@
 import { Flags } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
+import { metadataFlag, parseMetadataJson } from "../../lib/message-metadata.js";
 import { apiClient } from "../../lib/api-client.js";
 import {
   success,
@@ -61,6 +62,7 @@ export default class SmsSend extends AuthenticatedCommand {
       description: "Media URL to attach (MMS). Can be specified multiple times.",
       multiple: true,
     }),
+    metadata: metadataFlag,
     "idempotency-key": Flags.string({
       description:
         "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again.",
@@ -132,6 +134,12 @@ export default class SmsSend extends AuthenticatedCommand {
       this.exit(1);
     }
 
+    const metadata = parseMetadataJson(flags.metadata);
+    if (typeof metadata === "string") {
+      error(metadata);
+      this.exit(1);
+    }
+
     const messageLabel = hasMedia ? "MMS" : "SMS";
     const spin = spinner(`Sending ${messageLabel} message...`);
     spin.start();
@@ -145,6 +153,7 @@ export default class SmsSend extends AuthenticatedCommand {
           ...(text && { text }),
           ...(flags.from && { from: flags.from }),
           ...(hasMedia && { mediaUrls }),
+          ...(metadata && { metadata }),
         },
         true,
         { idempotencyKey: flags["idempotency-key"] },

@@ -205,3 +205,104 @@ describe("sendly whatsapp send failures with --fallback-sms", () => {
     expect(out.fallback).toBeUndefined();
   });
 });
+
+describe("sendly whatsapp send --media-url", () => {
+  const BASE = ["--to", "+14155550177", "--from", "+14155550123"];
+  const sentMedia = {
+    id: "msg_media",
+    channel: "whatsapp",
+    message_format: "whatsapp",
+    to: "+14155550177",
+    from: "+14155550123",
+    text: "Tonight's menu",
+    status: "sent",
+    segments: 1,
+    creditsUsed: 1,
+    whatsapp: { kind: "media", messageId: "wamid.1" },
+    createdAt: "2026-11-13T10:00:00.000Z",
+    metadata: {},
+  };
+
+  it("sends one media URL with its caption", async () => {
+    mockFetch.mockResolvedValueOnce(respond(201, sentMedia));
+    const run = await runCommand(WhatsappSend, [
+      ...BASE,
+      "--media-url",
+      "https://example.com/menu.jpg",
+      "--caption",
+      "Tonight's menu",
+    ]);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(String(url)).toContain("/api/v1/messages");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      channel: "whatsapp",
+      to: "+14155550177",
+      from: "+14155550123",
+      mediaUrls: ["https://example.com/menu.jpg"],
+      caption: "Tonight's menu",
+    });
+    expect(run.exitCode ?? 0).toBe(0);
+    expect(run.stdout).toContain("media");
+    expect(run.stdout).toContain("https://example.com/menu.jpg");
+  });
+
+  it("sends --text with media as the caption", async () => {
+    mockFetch.mockResolvedValueOnce(respond(201, sentMedia));
+    await runCommand(WhatsappSend, [
+      ...BASE,
+      "--media-url",
+      "https://example.com/menu.jpg",
+      "--text",
+      "Tonight's menu",
+    ]);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.caption).toBe("Tonight's menu");
+    expect(body).not.toHaveProperty("text");
+  });
+
+  it("sends media without a caption", async () => {
+    mockFetch.mockResolvedValueOnce(respond(201, sentMedia));
+    await runCommand(WhatsappSend, [...BASE, "--media-url", "https://example.com/voice.ogg"]);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.mediaUrls).toEqual(["https://example.com/voice.ogg"]);
+    expect(body).not.toHaveProperty("caption");
+    expect(body).not.toHaveProperty("text");
+  });
+
+  it("refuses a caption over 1024 bytes before sending", async () => {
+    setOutputFormat("json");
+    const run = await runCommand(WhatsappSend, [
+      ...BASE,
+      "--media-url",
+      "https://example.com/menu.jpg",
+      "--caption",
+      "é".repeat(513),
+    ]);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(run.exitCode).toBe(1);
+    expect(JSON.parse(run.stderr).message).toContain("1024 bytes");
+  });
+
+  it("refuses a caption on audio before sending", async () => {
+    setOutputFormat("json");
+    const run = await runCommand(WhatsappSend, [
+      ...BASE,
+      "--media-url",
+      "https://example.com/voice.mp3?sig=1",
+      "--caption",
+      "Listen",
+    ]);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(run.exitCode).toBe(1);
+    expect(JSON.parse(run.stderr).message).toContain("audio");
+  });
+
+  it("declares one --media-url, kept apart from templates, and --caption only with media", () => {
+    const flags = WhatsappSend.flags;
+    expect(flags["media-url"].multiple).toBeFalsy();
+    expect(flags["media-url"].exclusive).toEqual(["template", "language", "var"]);
+    expect(flags.caption.dependsOn).toEqual(["media-url"]);
+    expect(flags.text.exclusive).toContain("caption");
+  });
+});

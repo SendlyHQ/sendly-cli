@@ -1,5 +1,6 @@
 import { Flags } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
+import { metadataFlag, parseMetadataJson } from "../../lib/message-metadata.js";
 import {
   apiClient,
   ApiError,
@@ -161,6 +162,7 @@ export default class RcsSend extends AuthenticatedCommand {
         "Fail with an error instead of delivering as SMS when the recipient doesn't support RCS",
       default: false,
     }),
+    metadata: metadataFlag,
     "idempotency-key": Flags.string({
       description:
         "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again.",
@@ -181,6 +183,12 @@ export default class RcsSend extends AuthenticatedCommand {
       error("Missing --card-description for the card", {
         hint: "Rich cards need both a title and a description",
       });
+      this.exit(1);
+    }
+
+    const metadata = parseMetadataJson(flags.metadata);
+    if (typeof metadata === "string") {
+      error(metadata);
       this.exit(1);
     }
 
@@ -231,6 +239,7 @@ export default class RcsSend extends AuthenticatedCommand {
               }),
           ...(flags["no-fallback"] && { fallbackToSms: false }),
           ...(flags.type && { messageType: flags.type }),
+          ...(metadata && { metadata }),
         },
         true,
         { idempotencyKey: flags["idempotency-key"] },

@@ -267,10 +267,16 @@ sendly sms cancel schd_abc123
 
 Every send command (`send`, `sms send`, `sms group`, `sms schedule`, `sms batch`, `rcs send`, `whatsapp send`) accepts `--idempotency-key` (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again, so a crashed script or CI job is safe to re-run. An invalid key fails before any request is made.
 
-Without the flag, POSTs other than `sms batch` carry an auto-generated `Idempotency-Key`. The CLI keeps the same key, yours or the generated one, on every retry it makes (after a network error, a `5xx` or a busy key-check `429`; see [Retries](#retries-timeouts-and-rate-limits)), so a retry of a request that already reached the API does not send twice. (`sms batch` is excluded because the batch endpoint dedupes header-less retries itself.) Reusing a key with a different request fails with `422 idempotency_key_mismatch`. The RCS registration writes accept `--idempotency-key` too.
+Without the flag, POSTs other than `sms batch` carry an auto-generated `Idempotency-Key`. The CLI keeps the same key, yours or the generated one, on every retry it makes (after a network error, a `5xx` or a busy key-check `429`; see [Retries](#retries-timeouts-and-rate-limits)), so a retry of a request that already reached the API does not send twice. (`sms batch` is excluded because the batch endpoint dedupes header-less retries itself.) Reusing a key with a different request fails with `422 idempotency_key_mismatch`. The RCS registration writes accept `--idempotency-key` too, and so do `calls create`, `short-codes submit`, `whatsapp connect` and `whatsapp templates create`, where a repeat with the same key returns the first call, submission, connection or template instead of placing, charging or submitting again.
 
 ```bash
 sendly sms send --to "+15125550123" --text "Your order has shipped!" --idempotency-key "order-4821-shipped"
+```
+
+`sms send`, `whatsapp send` and `rcs send` also take `--metadata` with a JSON object, stored with the message and returned on it. Anything other than a JSON object is refused before a request is made.
+
+```bash
+sendly sms send --to "+15125550123" --text "Your order has shipped!" --metadata '{"orderId":"4821"}'
 ```
 
 ### Contacts Commands
@@ -826,7 +832,7 @@ sendly rcs capability --to "+15125550190"
 ### WhatsApp Commands
 
 Connect a number you own to WhatsApp and message customers over it —
-free-form text inside the 24-hour reply window, approved templates any time.
+free-form text or media inside the 24-hour reply window, approved templates any time.
 Connecting a number costs a one-time $9.99 connection fee per number, charged
 to your card when you start connecting it, with no monthly fee. If the
 connection fails, the $9.99 fee is refunded automatically; once a number has
@@ -834,8 +840,9 @@ connected, the fee isn't refundable and a later disconnect gets nothing back.
 
 `whatsapp send` goes through `POST /v1/messages` with channel `whatsapp` and
 needs `sms:send`, not `whatsapp:write`, and a live key. Reads (`whatsapp
-status`, `whatsapp senders`, `whatsapp templates list`, `whatsapp profile
-get`, `whatsapp components get`) need `whatsapp:read` and accept test keys.
+status`, `whatsapp senders`, `whatsapp window`, `whatsapp templates list`,
+`whatsapp profile get`, `whatsapp components get`) need `whatsapp:read` and
+accept test keys.
 Connecting (including `whatsapp verify` and `whatsapp resend-code`), template
 create/edit/delete, profile edits and photos, ice breakers and commands, and
 the calling switch need `whatsapp:write` and a live key or a `sendly login`
@@ -954,18 +961,48 @@ Meta doesn't allow business-initiated calls from that number's country code
 (+1, +20, +84 and +234). `--json` includes `businessAccountId`, `businessName`,
 `callingEnabled` and `outboundCallingAllowed`.
 
+#### Check the 24-hour Window
+
+```bash
+sendly whatsapp window "+15125550123" --from "+15125550188"
+
+# With one active sender, --from can be left out
+sendly whatsapp window "+15125550123" --json
+```
+
+Says whether the 24-hour reply window between the sender and the recipient is
+open (`GET /api/v1/whatsapp/window`), from Sendly's record of the recipient's
+last message. Inside it any message can be sent; outside it, only an approved
+template. `--json` prints the API's answer: `open` and `expiresAt`, when the
+window closes or closed. `expiresAt` is `null` when Sendly has no window on
+record for the pair, which a send may still find open. Without `--from`, the
+command uses the workspace's only active sender, and asks for `--from` when
+there are none or several.
+
 #### Send a Message
 
 ```bash
 # Free-form text (only inside the 24-hour reply window)
 sendly whatsapp send --to "+15125550123" --from "+15125550188" --text "Your table is ready!"
 
+# One image, video, audio file or document, with a caption (also only inside the window)
+sendly whatsapp send --to "+15125550123" --from "+15125550188" \
+  --media-url "https://example.com/menu.jpg" --caption "Tonight's menu"
+
 # Approved template (reaches contacts any time)
 sendly whatsapp send --to "+447700900123" --from "+15125550188" \
   --template order_shipped --language en_US --var 1=Acme --var 2=4821
 ```
 
-`--language` is required with `--template`, and `--text` cannot be combined with the template flags.
+`--language` is required with `--template`, and `--text` and `--media-url` cannot be combined with the template flags.
+
+`--media-url` takes one URL. The file type follows the URL's extension: JPEG
+and PNG go as images, MP4 and 3GP as video, MP3, AAC, M4A, OGG, AMR and Opus
+as audio, and anything else as a document named after the URL's last path
+segment. `--caption` (or `--text` next to `--media-url`, which is sent as the
+caption) is up to 1,024 bytes, and audio takes no caption; both are refused
+before anything is sent. With `--fallback-sms`, media needs a caption, which
+becomes the SMS text.
 
 Pricing: free-form text or media inside the 24-hour window costs 1 credit each for the first 1,000 per sending number per calendar month (UTC), then the destination's utility template price; countries without a listed price use the default utility price of 12 credits. Templates are priced by category and destination country; countries without a listed price use 33 (marketing), 12 (utility) and 12 (authentication) credits. A failed send gives its slot back.
 
@@ -1744,6 +1781,10 @@ sendly webhooks deliveries whk_abc123 --failed-only --limit 20
 #### Replay and Repair Deliveries
 
 ```bash
+# See what redeliver and backfill would send, without sending anything
+sendly webhooks recovery-preview whk_abc123
+sendly webhooks recovery-preview whk_abc123 --since "$(node -p 'new Date(Date.now() - 3 * 86400000).toISOString()')" --json
+
 # Requeue failed/cancelled deliveries from the audit log
 sendly webhooks redeliver whk_abc123
 sendly webhooks redeliver whk_abc123 --since "$(node -p 'new Date(Date.now() - 3 * 86400000).toISOString()')" --limit 5000
@@ -1757,7 +1798,7 @@ sendly webhooks backfill whk_abc123 --since "$(node -p 'new Date(Date.now() - 3 
 sendly webhooks reset-circuit whk_abc123
 ```
 
-`redeliver` and `backfill` default to the last 24 hours and a limit of 1000 (max 10000), and the window from `--since` to `--until` can be at most 7 days; `redeliver` defaults to the `failed,cancelled` statuses. Reset the circuit first if it is open.
+`recovery-preview`, `redeliver` and `backfill` default to the last 24 hours, and the window from `--since` to `--until` can be at most 7 days; `redeliver` and `backfill` default to a limit of 1000 (max 10000), and `redeliver` defaults to the `failed,cancelled` statuses. Reset the circuit before `redeliver` or `backfill` if it is open; `recovery-preview` works while it is open.
 
 #### Rotate Webhook Secret
 

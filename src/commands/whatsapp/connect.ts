@@ -134,6 +134,10 @@ export default class WhatsappConnect extends AuthenticatedCommand {
         "With --business-account: the business name WhatsApp shows for this number (max 512 characters). Defaults to the account's existing display name",
       dependsOn: ["business-account"],
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of starting, and charging for, another connection.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -149,6 +153,7 @@ export default class WhatsappConnect extends AuthenticatedCommand {
       await this.addByCode(flags.number, flags["business-account"], {
         verificationMethod: flags["verification-method"],
         displayName: flags["display-name"],
+        idempotencyKey: flags["idempotency-key"],
       });
       return;
     }
@@ -163,6 +168,8 @@ export default class WhatsappConnect extends AuthenticatedCommand {
       response = await apiClient.post<SignupStartResponse>(
         "/api/v1/whatsapp/signup",
         { phoneNumber: flags.number },
+        true,
+        { idempotencyKey: flags["idempotency-key"] },
       );
       startSpinner.stop();
     } catch (err: any) {
@@ -276,7 +283,11 @@ export default class WhatsappConnect extends AuthenticatedCommand {
   private async addByCode(
     number: string,
     businessAccountId: string,
-    options: { verificationMethod?: string; displayName?: string },
+    options: {
+      verificationMethod?: string;
+      displayName?: string;
+      idempotencyKey?: string;
+    },
   ): Promise<void> {
     const startSpinner = spinner("Asking WhatsApp for a verification code...");
     if (!isJsonMode()) {
@@ -301,6 +312,7 @@ export default class WhatsappConnect extends AuthenticatedCommand {
         true,
         {
           retry: false,
+          idempotencyKey: options.idempotencyKey,
           onStatus: (status) => {
             httpStatus = status;
           },

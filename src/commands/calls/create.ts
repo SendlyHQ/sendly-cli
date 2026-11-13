@@ -50,6 +50,10 @@ export default class CallsCreate extends AuthenticatedCommand {
         "key=value attached to the call and echoed in every read and webhook (repeatable, up to 20)",
       multiple: true,
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of placing another call.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -88,7 +92,9 @@ export default class CallsCreate extends AuthenticatedCommand {
 
     let call: Call;
     try {
-      call = await apiClient.post<Call>(CALLS_PATH, body);
+      call = await apiClient.post<Call>(CALLS_PATH, body, true, {
+        idempotencyKey: flags["idempotency-key"],
+      });
       dialSpinner.stop();
     } catch (err) {
       dialSpinner.stop();

@@ -158,6 +158,10 @@ export default class WhatsappTemplatesCreate extends AuthenticatedCommand {
         "Example value for a body variable, as n=value (required for every {{n}}). Repeatable.",
       multiple: true,
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of submitting another template.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -218,6 +222,8 @@ export default class WhatsappTemplatesCreate extends AuthenticatedCommand {
           ...(buttons.length > 0 && { buttons }),
           ...(examples && { examples }),
         },
+        true,
+        { idempotencyKey: flags["idempotency-key"] },
       );
 
       createSpinner.stop();

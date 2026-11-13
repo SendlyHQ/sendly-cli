@@ -1,5 +1,29 @@
 # @sendly/cli
 
+## 4.7.0
+
+### Minor Changes
+
+- **Check the WhatsApp 24-hour window.** New `sendly whatsapp window <phone> [--from <sender>]` says whether the 24-hour reply window between your sender and a recipient is open, and when it closes or closed, from `GET /api/v1/whatsapp/window`. Inside the window any message can be sent; outside it, only an approved template, and the command prints the template send to use. When Sendly has no window on record for the pair, it says so: a send may still find the window open. Without `--from` it uses the workspace's only active WhatsApp sender, and asks for `--from` when there are none or several. `--json` prints the API's `open` and `expiresAt`. Needs the `whatsapp:read` scope.
+- **Send media on WhatsApp.** `sendly whatsapp send --media-url <url>` sends one image, video, audio file or document inside the 24-hour window, typed by the URL's extension as the API does. `--caption` adds a caption, and `--text` next to `--media-url` is sent as the caption. A caption over 1,024 bytes, or a caption on audio, is refused before anything is sent, and `--media-url` can't be combined with the template flags.
+- **Preview a webhook recovery.** New `sendly webhooks recovery-preview <id> [--since] [--until] [--event-types]` counts what `redeliver` and `backfill` would send for a window of at most 7 days, without sending anything: the circuit state, failed and cancelled deliveries by status and event type, missing message events by type, a suggested outage window, and up to 5 sample events with masked recipients. It works while the circuit is open. `--json` prints the API's body. Needs the `webhooks:read` scope.
+- **`--idempotency-key` on more commands.** `calls create`, `short-codes submit`, `whatsapp connect` (with or without `--business-account`) and `whatsapp templates create` take `--idempotency-key` (1-255 printable ASCII characters), as the send commands do. Running the command again with the same key within 24 hours returns the first answer instead of placing another call, submitting the application again, starting (and charging for) another connection, or submitting another template. Without it they keep sending an auto-generated key.
+- **`--metadata` on sends.** `sms send`, `whatsapp send` and `rcs send` take `--metadata '<json>'`, a JSON object stored with the message and returned on it. Anything other than a JSON object is refused before a request is made.
+
+## 4.6.0
+
+### Minor Changes
+
+- **Test a voice agent's connection.** New `sendly voice agents test <id>` reaches your own agent (your model, a SIP address or a WebSocket server) the way a call would, without placing one, and prints each step and what to fix. `--connection` tests settings before you save them.
+- **Bring your own voice agent.** `sendly voice agents create` and `update` take `--kind custom_llm|sip|websocket` with the connection for that kind, and show the agent's signing secret once when it is created.
+- **Transfer a call.** New `sendly calls transfer <id> [--to <number>]` hands the caller to the agent's transfer number or to the number given. `calls get` shows the kind of agent that answered and any transfer, and `calls list --agent-kind` lists only calls answered by that kind of agent.
+
+## 4.5.1
+
+### Patch Changes
+
+- `sendly whatsapp connect`, `status` and `verify` describe the one-time $9.99 connection fee per number: charged when you start connecting it, refunded automatically if the connection fails or expires, and not refundable once the number is connected.
+
 ## 4.4.0
 
 ### Minor Changes

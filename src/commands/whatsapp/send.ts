@@ -1,5 +1,6 @@
 import { Flags } from "@oclif/core";
 import { AuthenticatedCommand } from "../../lib/base-command.js";
+import { metadataFlag, parseMetadataJson } from "../../lib/message-metadata.js";
 import {
   apiClient,
   ApiError,
@@ -61,13 +62,23 @@ function parseVariables(
   return out;
 }
 
+const MAX_CAPTION_BYTES = 1024;
+const AUDIO_EXTENSIONS = ["mp3", "aac", "m4a", "ogg", "oga", "amr", "opus"];
+
+function isAudioUrl(url: string): boolean {
+  const path = url.split(/[?#]/)[0].toLowerCase();
+  const ext = path.includes(".") ? path.substring(path.lastIndexOf(".") + 1) : "";
+  return AUDIO_EXTENSIONS.includes(ext);
+}
+
 export default class WhatsappSend extends AuthenticatedCommand {
   static description =
-    "Send a WhatsApp message: free-form text inside the 24-hour reply window, or an approved template any time. Needs the sms:send scope (not whatsapp:write) and a live API key.";
+    "Send a WhatsApp message: free-form text or one media file inside the 24-hour reply window, or an approved template any time. Needs the sms:send scope (not whatsapp:write) and a live API key.";
 
   static examples = [
     '<%= config.bin %> whatsapp send --to +15551234567 --from +15559876543 --text "Your table is ready!"',
     "<%= config.bin %> whatsapp send --to +447700900123 --from +15559876543 --template order_shipped --language en_US --var 1=TinyFat --var 2=4821",
+    '<%= config.bin %> whatsapp send --to +15551234567 --from +15559876543 --media-url https://example.com/menu.jpg --caption "Tonight\'s menu"',
     '<%= config.bin %> whatsapp send --to +15551234567 --from +15559876543 --text "Hello!" --json',
     '<%= config.bin %> whatsapp send --to +15551234567 --from +18885550190 --text "Your table is ready!" --fallback-sms',
   ];
@@ -88,7 +99,17 @@ export default class WhatsappSend extends AuthenticatedCommand {
       char: "m",
       description:
         "Free-form message text (only inside the 24-hour reply window)",
+      exclusive: ["template", "language", "var", "caption"],
+    }),
+    "media-url": Flags.string({
+      description:
+        "One media URL to send (only inside the 24-hour reply window). JPEG and PNG go as images, MP4 and 3GP as video, MP3, AAC, M4A, OGG, AMR and Opus as audio, anything else as a document. With --text, the text is sent as the caption.",
       exclusive: ["template", "language", "var"],
+    }),
+    caption: Flags.string({
+      description:
+        "Caption for the media, up to 1,024 bytes. Not for audio.",
+      dependsOn: ["media-url"],
     }),
     template: Flags.string({
       description: "Approved template name (reaches contacts any time)",
@@ -109,6 +130,7 @@ export default class WhatsappSend extends AuthenticatedCommand {
         "If WhatsApp can't deliver the message, send it as an SMS from the same number (US and Canada; the number must already be able to send SMS). Not for marketing or authentication templates.",
       default: false,
     }),
+    metadata: metadataFlag,
     "idempotency-key": Flags.string({
       description:
         "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of sending again.",
@@ -118,9 +140,21 @@ export default class WhatsappSend extends AuthenticatedCommand {
   async run(): Promise<void> {
     const { flags } = await this.parse(WhatsappSend);
 
-    if (!flags.text && !flags.template) {
-      error("Provide either --text or --template", {
-        hint: 'Free-form: --text "Hello!" · Template: --template order_shipped --language en_US',
+    const mediaUrl = flags["media-url"];
+    if (!flags.text && !mediaUrl && !flags.template) {
+      error("Provide --text, --media-url or --template", {
+        hint: 'Free-form: --text "Hello!" · Media: --media-url https://example.com/menu.jpg · Template: --template order_shipped --language en_US',
+      });
+      this.exit(1);
+    }
+    const caption = mediaUrl ? flags.caption ?? flags.text : undefined;
+    if (caption && Buffer.byteLength(caption, "utf8") > MAX_CAPTION_BYTES) {
+      error("WhatsApp media captions are limited to 1024 bytes.");
+      this.exit(1);
+    }
+    if (caption && mediaUrl && isAudioUrl(mediaUrl)) {
+      error("WhatsApp audio messages don't support captions.", {
+        hint: "Remove the caption or send the text as a separate message.",
       });
       this.exit(1);
     }
@@ -128,6 +162,12 @@ export default class WhatsappSend extends AuthenticatedCommand {
       error("Missing --language for the template", {
         hint: "Templates are per-language — e.g. --language en_US",
       });
+      this.exit(1);
+    }
+
+    const metadata = parseMetadataJson(flags.metadata);
+    if (typeof metadata === "string") {
+      error(metadata);
       this.exit(1);
     }
 
@@ -149,16 +189,19 @@ export default class WhatsappSend extends AuthenticatedCommand {
           channel: "whatsapp",
           to: flags.to,
           from: flags.from,
-          ...(flags.text
-            ? { text: flags.text }
-            : {
-                template: {
-                  name: flags.template,
-                  language: flags.language,
-                  ...(variables && { variables }),
-                },
-              }),
+          ...(mediaUrl
+            ? { mediaUrls: [mediaUrl], ...(caption && { caption }) }
+            : flags.text
+              ? { text: flags.text }
+              : {
+                  template: {
+                    name: flags.template,
+                    language: flags.language,
+                    ...(variables && { variables }),
+                  },
+                }),
           ...(flags["fallback-sms"] && { fallbackToSms: true }),
+          ...(metadata && { metadata }),
         },
         true,
         { idempotencyKey: flags["idempotency-key"] },
@@ -177,7 +220,10 @@ export default class WhatsappSend extends AuthenticatedCommand {
         "Message ID": colors.code(response.id),
         To: response.to,
         From: response.from,
-        Kind: response.whatsapp?.kind ?? (flags.text ? "text" : "template"),
+        Kind:
+          response.whatsapp?.kind ??
+          (mediaUrl ? "media" : flags.text ? "text" : "template"),
+        ...(mediaUrl && { Media: mediaUrl }),
         ...(response.whatsapp?.template && {
           Template: `${response.whatsapp.template.name} (${response.whatsapp.template.language}, ${response.whatsapp.template.category})`,
         }),

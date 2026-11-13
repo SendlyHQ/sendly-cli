@@ -31,6 +31,10 @@ export default class ShortCodesSubmit extends AuthenticatedCommand {
         "Accept the $999 setup fee charged now, the monthly lease from go-live and the 3-month minimum",
       default: false,
     }),
+    "idempotency-key": Flags.string({
+      description:
+        "Idempotency key (1-255 printable ASCII characters). Re-running with the same key within 24 hours returns the original result instead of submitting again.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -53,6 +57,8 @@ export default class ShortCodesSubmit extends AuthenticatedCommand {
       result = await apiClient.post<SubmitResponse>(
         "/api/v1/short_codes/application/submit",
         { acceptTerms: true },
+        true,
+        { idempotencyKey: flags["idempotency-key"] },
       );
       submitSpinner.stop();
     } catch (err) {
