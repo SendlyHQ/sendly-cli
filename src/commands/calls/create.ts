@@ -19,7 +19,7 @@ import {
 
 export default class CallsCreate extends AuthenticatedCommand {
   static description =
-    "Place a phone call that one of your AI agents handles. US and Canadian numbers only; needs a live API key with calls:write and a voice-enabled number";
+    "Place a phone call that one of your AI agents handles (a sendly or custom_llm agent; sip and websocket agents answer incoming calls only). US and Canadian numbers only; needs a live API key with calls:write and a voice-enabled number";
 
   static examples = [
     "<%= config.bin %> calls create --to +15125550123 --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b",

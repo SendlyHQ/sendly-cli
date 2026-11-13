@@ -43,7 +43,9 @@ import {
   callHangupPath,
   callPath,
   callRecordingPath,
+  callTransferPath,
   formatCallStatus,
+  formatCallTransfer,
   formatDuration,
   formatHangupClass,
   formatTranscriptTime,
@@ -245,6 +247,51 @@ describe("calls wire contract", () => {
     expect(callPath("a/b?c#d")).toBe("/api/v1/calls/a%2Fb%3Fc%23d");
     expect(callHangupPath("x y")).toBe("/api/v1/calls/x%20y/hangup");
     expect(callRecordingPath("x y")).toBe("/api/v1/calls/x%20y/recording");
+    expect(callTransferPath("a/b")).toBe("/api/v1/calls/a%2Fb/transfer");
+  });
+
+  it("list sends the agentKind filter next to agentId", async () => {
+    mockFetch.mockResolvedValueOnce(
+      ok(200, { data: [], pagination: { total: 0, limit: 50, offset: 0, hasMore: false } }),
+    );
+    await apiClient.get<CallListResponse>(CALLS_PATH, {
+      limit: 50,
+      offset: 0,
+      agentId: AGENT_ID,
+      agentKind: "websocket",
+    });
+    const parsed = new URL(mockFetch.mock.calls[0][0]);
+    expect(parsed.searchParams.get("agentKind")).toBe("websocket");
+    expect(parsed.searchParams.get("agentId")).toBe(AGENT_ID);
+  });
+
+  it("transfer POSTs { to } with an automatic idempotency key and returns the Call with a pending transfer", async () => {
+    mockFetch.mockResolvedValueOnce(
+      ok(202, {
+        ...CALL,
+        direction: "inbound",
+        status: "active",
+        agentKind: "websocket",
+        agentFallback: false,
+        transfer: { to: "+15555550102", status: "pending", failureReason: null },
+      }),
+    );
+
+    const call = await apiClient.post<Call>(callTransferPath(CALL_ID), {
+      to: "+15555550102",
+    });
+
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe(`https://sendly.live/api/v1/calls/${CALL_ID}/transfer`);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ to: "+15555550102" });
+    expect(init.headers["Idempotency-Key"]).toMatch(/^sendly-cli-retry-/);
+    expect(call.agentKind).toBe("websocket");
+    expect(call.transfer).toEqual({
+      to: "+15555550102",
+      status: "pending",
+      failureReason: null,
+    });
   });
 
   it("hangup POSTs an empty JSON object and returns the updated Call", async () => {
@@ -435,6 +482,9 @@ describe("calls helpers", () => {
     expect(nextPageCommand({ limit: 50 }, 50)).toBe(
       "sendly calls list --limit 50 --offset 50",
     );
+    expect(nextPageCommand({ "agent-kind": "sip", limit: 10 }, 10)).toBe(
+      "sendly calls list --agent-kind sip --limit 10 --offset 10",
+    );
     expect(nextPageCommand({ direction: "inbound", limit: 10 }, 30)).toBe(
       "sendly calls list --direction inbound --limit 10 --offset 30",
     );
@@ -472,6 +522,32 @@ describe("calls helpers", () => {
     expect(formatHangupClass("transferred")).toContain("agent transferred the caller");
     expect(formatHangupClass("voicemail")).toContain("left a message");
     expect(formatHangupClass("voicemail_unavailable")).toContain("could not take a message");
+  });
+
+  it("labels the own-agent outcomes agent_remote_hangup and agent_byo_failed", () => {
+    expect(formatHangupClass("agent_remote_hangup")).toContain("your agent ended the call");
+    expect(formatHangupClass("agent_byo_failed")).toContain("could not be reached");
+  });
+
+  it("formats a transfer by status, with the failure reason only when it failed", () => {
+    expect(formatCallTransfer(null)).toContain("none");
+    expect(formatCallTransfer(undefined)).toContain("none");
+    const pending = formatCallTransfer({ to: "+15555550102", status: "pending", failureReason: null });
+    expect(pending).toContain("+15555550102");
+    expect(pending).toContain("pending");
+    expect(
+      formatCallTransfer({ to: "+15555550102", status: "completed", failureReason: null }),
+    ).toContain("completed");
+    const failed = formatCallTransfer({ to: "+15555550102", status: "failed", failureReason: "no_answer" });
+    expect(failed).toContain("failed");
+    expect(failed).toContain("nobody answered");
+    expect(failed).toContain("caller still on the call");
+    expect(
+      formatCallTransfer({ to: "+15555550102", status: "failed", failureReason: "new_reason" }),
+    ).toContain("new_reason");
+    expect(
+      formatCallTransfer({ to: "+15555550102", status: "queued", failureReason: null }),
+    ).toContain("queued");
   });
 
   it("parses repeatable key=value metadata flags", () => {
@@ -631,6 +707,60 @@ describe("reportCallsError", () => {
     expect(out.code).toBe("daily_call_limit");
     expect(out.message).toBe("Today's calling limit has been reached. Try again tomorrow.");
     expect(JSON.stringify(out)).not.toMatch(/60 seconds/);
+  });
+
+  it("explains each transfer refusal with its own code and a hint", async () => {
+    const cases: Array<[number, string, string, RegExp]> = [
+      [400, "transfer_to_required", "Pass to, or set a transfer number on the agent.", /--transfer-to/],
+      [403, "outbound_not_enabled", "Transfers to other numbers need calling out switched on for this workspace.", /Leave out --to/],
+      [409, "call_not_active", "Only a call in progress can be transferred.", new RegExp(`sendly calls get ${CALL_ID}`)],
+      [409, "call_not_transferable", "Only incoming phone calls can be transferred.", /incoming phone calls/],
+      [409, "transfer_in_progress", "A transfer is already under way on this call.", new RegExp(`sendly calls get ${CALL_ID}`)],
+    ];
+    for (const [status, code, message, hint] of cases) {
+      errorSpy.mockClear();
+      mockFetch.mockResolvedValueOnce(fail(status, { error: code, message }));
+      const err = await apiClient
+        .post(callTransferPath(CALL_ID), {})
+        .catch((e: unknown) => e);
+      expect(reportCallsError(err, { callId: CALL_ID }), code).toBe(true);
+      const out = reported();
+      expect(out.code, code).toBe(code);
+      expect(out.message, code).toBe(message);
+      expect(String(out.hint), code).toMatch(hint);
+    }
+  });
+
+  it("explains a transfer refused for credits with the balance hint", async () => {
+    mockFetch.mockResolvedValueOnce(
+      fail(402, {
+        error: "insufficient_credits",
+        message: "Transfers need credits on the workspace. Current balance: 0.",
+        creditsNeeded: 1,
+        currentBalance: 0,
+      }),
+    );
+    const err = await apiClient
+      .post(callTransferPath(CALL_ID), {})
+      .catch((e: unknown) => e);
+    expect(reportCallsError(err, { callId: CALL_ID })).toBe(true);
+    expect(reported().code).toBe("insufficient_credits");
+    expect(String(reported().hint)).toContain("sendly credits");
+  });
+
+  it("explains agent_kind_unsupported when a sip or websocket agent is asked to place a call", async () => {
+    mockFetch.mockResolvedValueOnce(
+      fail(409, {
+        error: "agent_kind_unsupported",
+        message: "This agent type answers incoming calls only.",
+      }),
+    );
+    const err = await apiClient
+      .post(CALLS_PATH, { to: "+15555550123", agentId: AGENT_ID })
+      .catch((e: unknown) => e);
+    expect(reportCallsError(err)).toBe(true);
+    expect(reported().code).toBe("agent_kind_unsupported");
+    expect(String(reported().hint)).toContain("incoming calls only");
   });
 
   it("leaves unrelated errors to the base command", () => {

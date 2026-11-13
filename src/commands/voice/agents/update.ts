@@ -12,8 +12,12 @@ import {
 } from "../../../lib/output.js";
 import {
   AGENT_ROLE_HINT,
+  VOICE_AGENT_KINDS,
   buildAgentBody,
+  formatAgentKind,
   formatTexting,
+  parseConnectionFlag,
+  printSigningSecret,
   reportVoiceError,
   voiceAgentPath,
   type VoiceAgent,
@@ -21,7 +25,7 @@ import {
 
 export default class VoiceAgentsUpdate extends AuthenticatedCommand {
   static description =
-    "Change an AI agent. Only the flags you pass change, and the next call it answers or places uses them. With no flags it saves the agent as it is, which issues a new sending key if the old one was revoked. Needs a live API key with calls:write (owner or admin in a team workspace)";
+    "Change an AI agent. Only the flags you pass change, and the next call it answers or places uses them. --kind and --connection switch it to or between your own agents; switching a sendly agent to one, or --rotate-signing-secret, prints a new signing secret once (switching between your own kinds keeps the secret). With no flags it saves the agent as it is, which issues a new sending key if the old one was revoked. Needs a live API key with calls:write (owner or admin in a team workspace)";
 
   static examples = [
     '<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --greeting "Thanks for calling Acme, how can I help?"',
@@ -30,6 +34,9 @@ export default class VoiceAgentsUpdate extends AuthenticatedCommand {
     "<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --enable --json",
     "<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --transfer-to +15125550100",
     '<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --transfer-to ""',
+    '<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --kind websocket --connection \'{"url":"wss://agent.example.com/calls","authToken":"example-token"}\'',
+    '<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --connection \'{"apiKey":null}\'',
+    "<%= config.bin %> voice agents update 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b --rotate-signing-secret",
   ];
 
   static args = {
@@ -81,6 +88,19 @@ export default class VoiceAgentsUpdate extends AuthenticatedCommand {
         "Play quiet office ambience under the call (--no-background-audio turns it off)",
       allowNo: true,
     }),
+    kind: Flags.string({
+      description:
+        "Switch who writes the replies: sendly, custom_llm, sip or websocket. Switching to one of your own needs --connection; a sendly agent gets a signing secret, and switching between your own kinds keeps the one it has; switching to sendly removes the connection and the secret",
+      options: [...VOICE_AGENT_KINDS],
+    }),
+    connection: Flags.string({
+      description:
+        'How Sendly reaches your own agent, as a JSON object (or @file to read it from a file). custom_llm: {"baseUrl":"https://...","model":"...","apiKey":"...","headers":{...}}. sip: {"uri":"sip:+15125550100@sip.example.com","transport":"auto|udp|tcp|tls","mediaEncryption":"disable|allow|require","username":"...","password":"...","headers":{"X-...":"..."}}. websocket: {"url":"wss://...","audioFormat":"pcm16_16000|pcm16_24000|pcm16_8000|mulaw_8000","authToken":"...","customParameters":{...}}. With the same --kind it is merged into the saved connection: a key you leave out keeps its value, and null removes a secret (apiKey, headers, password, authToken)',
+    }),
+    "rotate-signing-secret": Flags.boolean({
+      description:
+        "Make a new signing secret for your own agent and print it once. The old one stops working at once",
+    }),
   };
 
   async run(): Promise<void> {
@@ -98,7 +118,19 @@ export default class VoiceAgentsUpdate extends AuthenticatedCommand {
       this.exit(1);
     }
 
-    const body = buildAgentBody(flags);
+    let connection: Record<string, unknown> | undefined;
+    if (flags.connection !== undefined) {
+      const parsed = parseConnectionFlag(flags.connection);
+      if (typeof parsed === "string") {
+        error(parsed, {
+          hint: "See `sendly voice agents update --help` for the fields each --kind takes",
+        });
+        this.exit(1);
+      }
+      connection = parsed as Record<string, unknown>;
+    }
+
+    const body = buildAgentBody({ ...flags, connection });
 
     const saveSpinner = spinner("Saving agent...");
     if (!isJsonMode()) {
@@ -127,10 +159,15 @@ export default class VoiceAgentsUpdate extends AuthenticatedCommand {
     success("Agent saved", {
       id: colors.code(agent.id),
       Name: agent.name,
+      Kind: formatAgentKind(agent.kind),
       Status: agent.enabled ? colors.success("on") : colors.dim("off"),
       Voice: agent.voiceLabel,
       Texting: formatTexting(agent),
     });
+
+    if (agent.signingSecret) {
+      printSigningSecret(agent.signingSecret);
+    }
 
     const requestedVoice = flags.voice?.trim();
     if (requestedVoice && requestedVoice !== agent.voice) {

@@ -1140,7 +1140,8 @@ Place and manage phone calls handled by your AI agents. `calls list`,
 `calls get` and `calls recording` work with any API key that has the
 `calls:read` scope or a `sendly login` session. Calls are live data, so a test
 key lists none and gets `call_not_found` for a call or its recording. Placing
-and ending calls (`calls create`, `calls hangup`) needs a live API key with
+and ending or transferring calls (`calls create`, `calls hangup`,
+`calls transfer`) needs a live API key with
 `calls:write`, a US or Canadian number that has voice switched on and a
 registered emergency address for that number. Voice is being enabled
 workspace by workspace; until it is on for yours these commands return
@@ -1169,6 +1170,9 @@ workspace is in use, so retry in a moment. `409 agent_disabled` means the agent
 is switched off. `429 daily_call_limit` means the workspace has reached today's
 calling limit, so try again tomorrow. `400 from_number_not_supported` means the
 `--from` number is not a US or Canadian number; pass one that is.
+`409 agent_kind_unsupported` means the agent is a `sip` or `websocket` agent,
+which answer incoming calls only; `sendly` and `custom_llm` agents can place
+calls.
 
 #### List Calls
 
@@ -1180,13 +1184,19 @@ sendly calls list
 # Filter and paginate (--limit 1-100)
 sendly calls list --status active
 sendly calls list --direction outbound --agent <agentId> --limit 20 --offset 20
+
+# Only calls answered by one kind of agent (older calls count as sendly)
+sendly calls list --agent-kind websocket
 ```
 
 Statuses: `ringing`, `active`, `suspended`, `completed`, `no_answer`, `busy`, `cancelled`, `declined`, `failed`.
 
 #### Inspect a Call
 
-Shows the channel (`phone`, `whatsapp` or `browser`), hangup reason, recording
+Shows the channel (`phone`, `whatsapp` or `browser`), hangup reason, the kind
+of agent that answered (`sendly`, `custom_llm`, `sip` or `websocket`), whether
+Sendly fell back because your own agent could not be reached, any transfer
+(its number, `pending`, `completed` or `failed` with the reason), recording
 status and metadata. Agent-handled calls print the transcript below the
 details:
 
@@ -1202,6 +1212,33 @@ already ended is returned unchanged:
 ```bash
 sendly calls hangup <callId>
 ```
+
+#### Transfer a Call
+
+Hands an incoming phone call in progress to another number, whatever kind of
+agent is on it. Without `--to` it goes to the agent's transfer number
+(`--transfer-to` on the agent). The transfer runs in the background: follow it
+with `sendly calls get`; once the caller is handed over the call ends
+`completed` with hangup class `transferred`, and a failed transfer leaves the
+caller on the call.
+
+```bash
+# To the agent's transfer number
+sendly calls transfer <callId>
+
+# To another US or Canadian number
+sendly calls transfer <callId> --to +15125550100
+```
+
+`400 transfer_to_required` means there is no `--to` and the agent has no
+transfer number. `400 invalid_request` means `--to` is not a US or Canadian
+number, is premium-rate, is the number the caller dialled or is a number the
+agent answers. `403 outbound_not_enabled` means a number other than the
+agent's needs calling out switched on for the workspace. `402
+insufficient_credits` means the workspace has no credits left. `409
+call_not_active` means the call is not in progress, `409 call_not_transferable`
+that it is not an incoming phone call, and `409 transfer_in_progress` that a
+transfer is already under way or the call has had 3 transfer attempts.
 
 #### Download a Recording
 
@@ -1304,6 +1341,51 @@ sendly voice agents update <agentId> --transfer-to +15125550100 --background-aud
 # Asks before deleting; --yes skips the prompt
 sendly voice agents delete <agentId>
 ```
+
+##### Bring Your Own Agent
+
+`--kind` chooses who writes the replies: `sendly` (the default, from
+`--instructions`), `custom_llm` (Sendly listens and speaks, your chat
+completions endpoint writes each reply), `sip` (Sendly connects the caller to
+your SIP address) or `websocket` (Sendly streams call audio to your `wss://`
+server). `sip` and `websocket` agents answer incoming calls only. Your own
+agents are switched on workspace by workspace (`403 byo_agents_not_enabled`
+until then).
+
+`--connection` takes a JSON object, or `@file` to read it from a file, which
+keeps secrets out of your shell history:
+
+```bash
+sendly voice agents create --name "Own model" --kind custom_llm \
+  --connection '{"baseUrl":"https://llm.example.com/v1","model":"support-v2","apiKey":"sk-example"}'
+
+sendly voice agents create --name "Desk phones" --kind sip \
+  --connection '{"uri":"sip:+15125550100@sip.example.com","transport":"tls","username":"desk","password":"example"}'
+
+sendly voice agents create --name "Stream" --kind websocket --connection @connection.json
+
+# Same kind: merged into the saved connection; null removes a secret
+sendly voice agents update <agentId> --connection '{"apiKey":null}'
+
+# New signing secret; the old one stops working at once
+sendly voice agents update <agentId> --rotate-signing-secret
+```
+
+| Kind | Fields |
+|------|--------|
+| `custom_llm` | `baseUrl` (https, Sendly POSTs `{baseUrl}/chat/completions`), `model`, `apiKey` (sent as `Authorization: Bearer`), `headers` (up to 10 extra headers) |
+| `sip` | `uri` (`sip:` or `sips:` with a user and a hostname), `transport` (`auto`, `udp`, `tcp` default, `tls`), `mediaEncryption` (`disable`, `allow` default, `require`), `username`, `password`, `headers` (up to 10 named `X-...`) |
+| `websocket` | `url` (wss), `audioFormat` (`pcm16_16000` default, `pcm16_24000`, `pcm16_8000`, `mulaw_8000`), `authToken` (sent as `Authorization: Bearer`), `customParameters` (up to 20, sent in the `start` message) |
+
+Secrets (`apiKey`, header values for `custom_llm`, `password`, `authToken`) are
+never shown back; `voice agents get` says whether each one is saved. Creating
+your own agent, switching a sendly agent to one, or `--rotate-signing-secret` prints
+the agent's signing secret once (and `--json` returns it as `signingSecret`):
+save it then, it is never shown again. Sendly signs every request to your agent
+with it in the `X-Sendly-Signature` header (`t=<unix time>,v1=<hex HMAC-SHA256>`).
+Switching back to `--kind sendly` removes the connection and the secret. A
+connection the API refuses comes back as `400 invalid_request` naming the
+field, e.g. `connection.url: ...`.
 
 `--name` is capped at 80 characters, `--greeting` at 500 and `--instructions`
 at 4000; on `update`, `""` clears the greeting or instructions. An unknown

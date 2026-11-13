@@ -9,6 +9,7 @@ import {
   ApiKeyRequiredError,
   CREATE_LIVE_KEY_COMMAND,
 } from "./api-client.js";
+import { readFileSync } from "node:fs";
 import { reportCallsError } from "./calls.js";
 import { colors, error, isJsonMode } from "./output.js";
 
@@ -54,11 +55,55 @@ export interface VoiceAgentTools {
   backgroundAudio?: boolean;
 }
 
+export type VoiceAgentKind =
+  | "sendly"
+  | "custom_llm"
+  | "sip"
+  | "websocket"
+  | (string & {});
+
+export interface CustomLlmConnection {
+  baseUrl: string;
+  model: string;
+  headerNames: string[];
+  hasApiKey: boolean;
+}
+
+export interface SipConnection {
+  uri: string;
+  transport: "auto" | "udp" | "tcp" | "tls" | (string & {});
+  mediaEncryption: "disable" | "allow" | "require" | (string & {});
+  username: string | null;
+  hasPassword: boolean;
+  headers: Record<string, string>;
+}
+
+export interface WebsocketConnection {
+  url: string;
+  audioFormat:
+    | "pcm16_16000"
+    | "pcm16_24000"
+    | "pcm16_8000"
+    | "mulaw_8000"
+    | (string & {});
+  hasAuthToken: boolean;
+  customParameters: Record<string, string>;
+}
+
+export type VoiceAgentConnection =
+  | CustomLlmConnection
+  | SipConnection
+  | WebsocketConnection;
+
 export interface VoiceAgent {
   id: string;
   object: "voice_agent";
   name: string;
   enabled: boolean;
+  kind: VoiceAgentKind;
+  connection: VoiceAgentConnection | null;
+  hasSigningSecret: boolean;
+  signingSecret?: string;
   voice: string;
   voiceLabel: string;
   language: string;
@@ -89,6 +134,8 @@ export interface DeletedVoiceAgent {
 }
 
 export const VOICE_MODES: readonly VoiceMode[] = ["none", "ring_dashboard", "agent"];
+
+export const VOICE_AGENT_KINDS = ["sendly", "custom_llm", "sip", "websocket"] as const;
 
 export const VOICE_NUMBERS_PATH = "/api/v1/voice/numbers";
 export const VOICE_AGENTS_PATH = "/api/v1/voice/agents";
@@ -162,6 +209,9 @@ export interface AgentFlags {
   sms?: boolean;
   "transfer-to"?: string;
   "background-audio"?: boolean;
+  kind?: string;
+  connection?: Record<string, unknown>;
+  "rotate-signing-secret"?: boolean;
 }
 
 export function buildAgentBody(flags: AgentFlags): Record<string, unknown> {
@@ -183,7 +233,121 @@ export function buildAgentBody(flags: AgentFlags): Record<string, unknown> {
     tools.backgroundAudio = flags["background-audio"];
   }
   if (Object.keys(tools).length > 0) body.tools = tools;
+  if (flags.kind !== undefined) body.kind = flags.kind;
+  if (flags.connection !== undefined) body.connection = flags.connection;
+  if (flags["rotate-signing-secret"]) body.rotateSigningSecret = true;
   return body;
+}
+
+export function parseConnectionFlag(
+  raw: string,
+): Record<string, unknown> | string {
+  let text = raw;
+  if (raw.startsWith("@")) {
+    const path = raw.slice(1);
+    try {
+      text = readFileSync(path, "utf8");
+    } catch {
+      return `Could not read --connection file "${path}"`;
+    }
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return "--connection must be a JSON object, e.g. '{\"url\":\"wss://agent.example.com/calls\"}'";
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return "--connection must be a JSON object, e.g. '{\"url\":\"wss://agent.example.com/calls\"}'";
+  }
+  return parsed as Record<string, unknown>;
+}
+
+const AGENT_KIND_LABELS: Record<string, string> = {
+  sendly: "Sendly writes the replies",
+  custom_llm: "your chat completions endpoint writes the replies",
+  sip: "callers are connected to your SIP address",
+  websocket: "call audio is streamed to your server",
+};
+
+export function formatAgentKind(kind: string | null | undefined): string {
+  if (!kind) return colors.dim("-");
+  const label = AGENT_KIND_LABELS[kind];
+  return label ? `${kind} ${colors.dim(`(${label})`)}` : kind;
+}
+
+export function canPlaceCalls(kind: string | null | undefined): boolean {
+  return kind !== "sip" && kind !== "websocket";
+}
+
+function savedOrNone(saved: boolean | undefined): string {
+  return saved ? colors.success("saved") : colors.dim("none");
+}
+
+function pairs(map: Record<string, string> | null | undefined, sep: string): string {
+  const entries = Object.entries(map ?? {});
+  if (entries.length === 0) return colors.dim("none");
+  return entries.map(([k, v]) => `${k}${sep}${v}`).join(", ");
+}
+
+export function connectionRows(
+  agent: Pick<VoiceAgent, "connection" | "hasSigningSecret" | "kind">,
+): Array<[string, string]> {
+  const c = agent.connection as Record<string, unknown> | null | undefined;
+  const rows: Array<[string, string]> = [];
+  if (c && typeof c === "object") {
+    if (typeof c.baseUrl === "string") {
+      const conn = c as unknown as CustomLlmConnection;
+      rows.push(
+        ["Endpoint", conn.baseUrl],
+        ["Model", conn.model],
+        ["API key", savedOrNone(conn.hasApiKey)],
+        [
+          "Extra headers",
+          conn.headerNames?.length
+            ? `${conn.headerNames.join(", ")} ${colors.dim("(values saved)")}`
+            : colors.dim("none"),
+        ],
+      );
+    } else if (typeof c.uri === "string") {
+      const conn = c as unknown as SipConnection;
+      rows.push(
+        ["SIP address", conn.uri],
+        ["Transport", String(conn.transport)],
+        ["Media encryption", String(conn.mediaEncryption)],
+        ["Username", conn.username ?? colors.dim("none")],
+        ["Password", savedOrNone(conn.hasPassword)],
+        ["SIP headers", pairs(conn.headers, ": ")],
+      );
+    } else if (typeof c.url === "string") {
+      const conn = c as unknown as WebsocketConnection;
+      rows.push(
+        ["WebSocket URL", conn.url],
+        ["Audio format", String(conn.audioFormat)],
+        ["Auth token", savedOrNone(conn.hasAuthToken)],
+        ["Custom parameters", pairs(conn.customParameters, "=")],
+      );
+    }
+  }
+  if ((agent.kind && agent.kind !== "sendly") || agent.hasSigningSecret) {
+    rows.push(["Signing secret", agent.hasSigningSecret ? colors.success("set") : colors.dim("none")]);
+  }
+  return rows;
+}
+
+export function printSigningSecret(secret: string): void {
+  console.log();
+  console.log(
+    `${colors.warning("⚠")} ${colors.bold("Signing secret: save it now, it is never shown again.")}`,
+  );
+  console.log(
+    colors.dim(
+      "Sendly signs every request to your agent with it in the X-Sendly-Signature header (t=<unix time>,v1=<hex HMAC-SHA256>).",
+    ),
+  );
+  console.log();
+  console.log(`  ${colors.code(secret)}`);
+  console.log();
 }
 
 export function formatTransfer(agent: Pick<VoiceAgent, "tools">): string {
@@ -344,6 +508,23 @@ export function reportVoiceError(
         hint: `Switch the agent on first: sendly voice agents update ${context.agentId ?? "<agentId>"} --enable`,
       });
       return true;
+    case "byo_agents_not_enabled":
+      error(err.message, {
+        code,
+        hint: "Your own agents (--kind custom_llm, sip or websocket) are switched on workspace by workspace. Contact support@sendly.live to get them switched on",
+      });
+      return true;
+    case "invalid_request":
+      if (/^(connection\b|rotateSigningSecret\b)/.test(err.message)) {
+        error(err.message, {
+          code,
+          hint: /^rotateSigningSecret/.test(err.message)
+            ? "Only your own agents (--kind custom_llm, sip or websocket) have a signing secret"
+            : "Fix that field in --connection. `sendly voice agents create --help` lists the fields for each --kind",
+        });
+        return true;
+      }
+      break;
     case "agent_limit":
       error(err.message, {
         code,

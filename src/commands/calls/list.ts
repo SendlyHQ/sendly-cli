@@ -21,12 +21,14 @@ import {
   shortId,
   type CallListResponse,
 } from "../../lib/calls.js";
+import { VOICE_AGENT_KINDS } from "../../lib/voice.js";
 
 export function nextPageCommand(
   flags: {
     status?: string;
     direction?: string;
     agent?: string;
+    "agent-kind"?: string;
     limit: number;
   },
   nextOffset: number,
@@ -35,6 +37,7 @@ export function nextPageCommand(
   if (flags.status) parts.push(`--status ${flags.status}`);
   if (flags.direction) parts.push(`--direction ${flags.direction}`);
   if (flags.agent) parts.push(`--agent ${flags.agent}`);
+  if (flags["agent-kind"]) parts.push(`--agent-kind ${flags["agent-kind"]}`);
   parts.push(`--limit ${flags.limit}`, `--offset ${nextOffset}`);
   return parts.join(" ");
 }
@@ -46,6 +49,7 @@ export default class CallsList extends AuthenticatedCommand {
     "<%= config.bin %> calls list",
     "<%= config.bin %> calls list --status active",
     "<%= config.bin %> calls list --direction outbound --agent 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b",
+    "<%= config.bin %> calls list --agent-kind websocket",
     "<%= config.bin %> calls list --limit 20 --offset 20 --json",
   ];
 
@@ -61,6 +65,11 @@ export default class CallsList extends AuthenticatedCommand {
     }),
     agent: Flags.string({
       description: "Only calls handled by this AI agent id",
+    }),
+    "agent-kind": Flags.string({
+      description:
+        "Only calls answered by this kind of agent (calls from before agent kinds existed count as sendly)",
+      options: [...VOICE_AGENT_KINDS],
     }),
     limit: Flags.integer({
       char: "l",
@@ -89,6 +98,7 @@ export default class CallsList extends AuthenticatedCommand {
         status: flags.status,
         direction: flags.direction,
         agentId: flags.agent,
+        agentKind: flags["agent-kind"],
       });
       listSpinner.stop();
     } catch (err) {
@@ -143,6 +153,16 @@ export default class CallsList extends AuthenticatedCommand {
         header: "To",
         key: "to",
         formatter: (v) => (v ? String(v) : colors.dim("-")),
+      },
+      {
+        header: "Agent",
+        key: "agentKind",
+        formatter: (v, row) => {
+          const kind = v ? String(v) : colors.dim("-");
+          return row?.agentFallback
+            ? `${kind} ${colors.warning("fallback")}`
+            : kind;
+        },
       },
       {
         header: "Duration",

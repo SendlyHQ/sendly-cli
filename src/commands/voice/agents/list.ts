@@ -19,7 +19,7 @@ import {
 
 export default class VoiceAgentsList extends AuthenticatedCommand {
   static description =
-    "List the AI agents in your workspace with their voice, texting, and how many calls they have handled";
+    "List the AI agents in your workspace with their kind, voice, texting, and how many calls they have handled";
 
   static examples = [
     "<%= config.bin %> voice agents list",
@@ -76,6 +76,11 @@ export default class VoiceAgentsList extends AuthenticatedCommand {
       {
         header: "Name",
         key: "name",
+      },
+      {
+        header: "Kind",
+        key: "kind",
+        formatter: (v) => String(v ?? "sendly"),
       },
       {
         header: "Status",

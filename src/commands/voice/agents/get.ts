@@ -11,6 +11,8 @@ import {
 } from "../../../lib/output.js";
 import { formatDuration } from "../../../lib/calls.js";
 import {
+  connectionRows,
+  formatAgentKind,
   formatBackgroundAudio,
   formatTexting,
   formatTransfer,
@@ -25,7 +27,7 @@ function when(value: string | null): string {
 
 export default class VoiceAgentsGet extends AuthenticatedCommand {
   static description =
-    "Show an AI agent: its voice, language, greeting, instructions, texting, and the calls it has handled";
+    "Show an AI agent: its kind and connection (never its secrets), voice, language, greeting, instructions, texting, and the calls it has handled";
 
   static examples = [
     "<%= config.bin %> voice agents get 3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b",
@@ -76,6 +78,8 @@ export default class VoiceAgentsGet extends AuthenticatedCommand {
 
     const rows: Array<[string, string]> = [
       ["ID", agent.id],
+      ["Kind", formatAgentKind(agent.kind ?? "sendly")],
+      ...connectionRows(agent),
       ["Status", agent.enabled ? colors.success("on") : colors.dim("off")],
       ["Voice", `${agent.voiceLabel} ${colors.dim(`(${agent.voice})`)}`],
       ["Language", agent.language],

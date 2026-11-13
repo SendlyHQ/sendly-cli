@@ -1,7 +1,7 @@
 /**
  * Voice call helpers
  * Shapes, paths, formatting and error reporting shared by the `sendly calls`
- * commands (list, get, create, hangup, recording)
+ * commands (list, get, create, hangup, transfer, recording)
  */
 
 import {
@@ -14,6 +14,7 @@ import {
   ValidationError,
 } from "./api-client.js";
 import { colors, error, formatRelativeTime } from "./output.js";
+import type { VoiceAgentKind } from "./voice.js";
 
 export type CallStatus =
   | "ringing"
@@ -39,6 +40,21 @@ export interface CallTranscriptLine {
   atMs: number;
 }
 
+export type CallTransferStatus = "pending" | "completed" | "failed" | (string & {});
+export type CallTransferFailureReason =
+  | "busy"
+  | "no_answer"
+  | "declined"
+  | "unavailable"
+  | "unknown"
+  | (string & {});
+
+export interface CallTransfer {
+  to: string;
+  status: CallTransferStatus;
+  failureReason: CallTransferFailureReason | null;
+}
+
 export interface Call {
   id: string;
   object: "call";
@@ -59,6 +75,9 @@ export interface Call {
   creditsCharged: number;
   billing: CallBilling;
   hangupClass: string | null;
+  agentKind?: VoiceAgentKind | null;
+  agentFallback?: boolean;
+  transfer?: CallTransfer | null;
   recordingStatus: CallRecordingStatus;
   metadata: Record<string, string>;
   transcript?: CallTranscriptLine[];
@@ -106,6 +125,10 @@ export function callHangupPath(id: string): string {
   return `${callPath(id)}/hangup`;
 }
 
+export function callTransferPath(id: string): string {
+  return `${callPath(id)}/transfer`;
+}
+
 export function callRecordingPath(id: string): string {
   return `${callPath(id)}/recording`;
 }
@@ -148,6 +171,8 @@ const HANGUP_CLASS_LABELS: Record<string, string> = {
   setup_failed: "setup failed",
   agent_dispatch_failed: "agent could not be dispatched",
   agent_api_unreachable: "agent service unreachable",
+  agent_remote_hangup: "your agent ended the call",
+  agent_byo_failed: "your agent could not be reached or dropped",
   agent_already_ended: "agent had already ended",
   ended: "ended",
 };
@@ -196,6 +221,32 @@ export function formatHangupClass(hangupClass: string | null): string {
   return label ? `${hangupClass} ${colors.dim(`(${label})`)}` : hangupClass;
 }
 
+const TRANSFER_FAILURE_LABELS: Record<string, string> = {
+  busy: "line busy",
+  no_answer: "nobody answered",
+  declined: "declined",
+  unavailable: "number unavailable",
+  unknown: "reason unknown",
+};
+
+export function formatCallTransfer(transfer: CallTransfer | null | undefined): string {
+  if (!transfer) return colors.dim("none");
+  switch (transfer.status) {
+    case "pending":
+      return `${transfer.to} ${colors.warning("pending")}`;
+    case "completed":
+      return `${transfer.to} ${colors.success("completed")}`;
+    case "failed": {
+      const reason = transfer.failureReason
+        ? (TRANSFER_FAILURE_LABELS[transfer.failureReason] ?? transfer.failureReason)
+        : null;
+      return `${transfer.to} ${colors.error("failed")}${reason ? ` ${colors.dim(`(${reason}, caller still on the call)`)}` : ""}`;
+    }
+    default:
+      return `${transfer.to} ${transfer.status}`;
+  }
+}
+
 export function formatRecordingStatus(status: string | null): string {
   if (!status) return colors.dim("none");
   switch (status) {
@@ -242,7 +293,15 @@ export function parseMetadataFlags(
   return out;
 }
 
-export function reportCallsError(err: unknown): boolean {
+export interface CallsErrorContext {
+  callId?: string;
+}
+
+export function reportCallsError(
+  err: unknown,
+  context: CallsErrorContext = {},
+): boolean {
+  const callId = context.callId ?? "<callId>";
   if (err instanceof NotFoundError) {
     if (/voice is not enabled/i.test(err.message)) {
       error(err.message, { code: "voice_not_enabled", hint: VOICE_ACCESS_HINT });
@@ -322,6 +381,13 @@ export function reportCallsError(err: unknown): boolean {
       error(err.message, { code: "destination_not_supported" });
       return true;
     }
+    if (err.body?.error === "transfer_to_required") {
+      error(err.message, {
+        code: "transfer_to_required",
+        hint: `Pass --to <e164>, or give the agent a transfer number with \`sendly voice agents update <agentId> --transfer-to <e164>\``,
+      });
+      return true;
+    }
     if (err.body?.error === "from_number_not_supported") {
       error(err.message, {
         code: "from_number_not_supported",
@@ -366,6 +432,36 @@ export function reportCallsError(err: unknown): boolean {
       error(err.message, {
         code,
         hint: "Try again later or check https://status.sendly.live",
+      });
+      return true;
+    case "outbound_not_enabled":
+      error(err.message, {
+        code,
+        hint: "Leave out --to to transfer to the agent's own transfer number. Calling out to other numbers is switched on workspace by workspace; contact support@sendly.live to get it switched on",
+      });
+      return true;
+    case "call_not_active":
+      error(err.message, {
+        code,
+        hint: `Only a call in progress can be transferred. Check it with \`sendly calls get ${callId}\``,
+      });
+      return true;
+    case "call_not_transferable":
+      error(err.message, {
+        code,
+        hint: "Only incoming phone calls can be transferred, not calls you placed or WhatsApp and browser calls",
+      });
+      return true;
+    case "transfer_in_progress":
+      error(err.message, {
+        code,
+        hint: `A call allows one transfer at a time and 3 attempts in all. See how it went with \`sendly calls get ${callId}\``,
+      });
+      return true;
+    case "agent_kind_unsupported":
+      error(err.message, {
+        code,
+        hint: "SIP and WebSocket agents answer incoming calls only. Place the call with a sendly or custom_llm agent, or point a number at this one with `sendly voice numbers update <number> --mode agent --agent <agentId>`",
       });
       return true;
     case "idempotency_key_mismatch":

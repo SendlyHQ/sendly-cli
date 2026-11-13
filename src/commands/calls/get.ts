@@ -11,6 +11,7 @@ import {
 import {
   callPath,
   formatCallStatus,
+  formatCallTransfer,
   formatDuration,
   formatHangupClass,
   formatRecordingStatus,
@@ -18,6 +19,7 @@ import {
   reportCallsError,
   type Call,
 } from "../../lib/calls.js";
+import { formatAgentKind } from "../../lib/voice.js";
 
 function when(value: string | null): string {
   return value ? new Date(value).toLocaleString() : colors.dim("-");
@@ -25,7 +27,7 @@ function when(value: string | null): string {
 
 export default class CallsGet extends AuthenticatedCommand {
   static description =
-    "Show a call: status, numbers, duration, credits, hangup reason, recording status and metadata (agent calls include the transcript)";
+    "Show a call: status, numbers, duration, credits, hangup reason, the kind of agent that answered, any transfer, recording status and metadata (agent calls include the transcript)";
 
   static examples = [
     "<%= config.bin %> calls get 6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
@@ -78,6 +80,19 @@ export default class CallsGet extends AuthenticatedCommand {
         : []),
       ["Handled by", call.handledBy],
       ["Agent", call.agentId ?? colors.dim("-")],
+      ...(call.agentKind
+        ? ([["Agent kind", formatAgentKind(call.agentKind)]] as Array<[string, string]>)
+        : []),
+      ...(call.agentFallback
+        ? ([
+            [
+              "Agent fallback",
+              colors.warning(
+                "yes, your agent could not be reached, so Sendly said a short line and transferred the caller or took a message",
+              ),
+            ],
+          ] as Array<[string, string]>)
+        : []),
       ["From", call.from ?? colors.dim("-")],
       ["To", call.to ?? colors.dim("-")],
       ["Caller name", call.callerName ?? colors.dim("-")],
@@ -96,6 +111,7 @@ export default class CallsGet extends AuthenticatedCommand {
       ["Credits", String(call.creditsCharged ?? 0)],
       ["Billing", call.billing],
       ["Hangup class", formatHangupClass(call.hangupClass)],
+      ["Transfer", formatCallTransfer(call.transfer)],
       ["Recording", formatRecordingStatus(call.recordingStatus)],
     ]);
 

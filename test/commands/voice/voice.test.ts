@@ -36,9 +36,14 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import { apiClient } from "../../../src/lib/api-client.js";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { setOutputFormat } from "../../../src/lib/output.js";
+import { respond, runCommand } from "../../helpers/run-command.js";
 import {
   VOICE_AGENTS_PATH,
+  VOICE_AGENT_KINDS,
   VOICE_MODES,
   VOICE_NUMBERS_PATH,
   VOICE_VOICES_PATH,
@@ -46,8 +51,11 @@ import {
   buildAgentBody,
   buildEmergencyAddressBody,
   buildNumberUpdateBody,
+  canPlaceCalls,
+  connectionRows,
   emergencyAddressCommand,
   formatAddress,
+  formatAgentKind,
   formatBackgroundAudio,
   formatEmergencyStatus,
   formatRates,
@@ -55,6 +63,7 @@ import {
   formatTransfer,
   formatVoiceMode,
   needsEmergencyAddress,
+  parseConnectionFlag,
   reportVoiceError,
   shellQuote,
   voiceAgentPath,
@@ -71,6 +80,8 @@ import VoiceNumbersEmergencyAddress from "../../../src/commands/voice/numbers/em
 import VoiceAgentsCreate from "../../../src/commands/voice/agents/create.js";
 import VoiceAgentsUpdate from "../../../src/commands/voice/agents/update.js";
 import VoiceAgentsDelete from "../../../src/commands/voice/agents/delete.js";
+import VoiceAgentsGet from "../../../src/commands/voice/agents/get.js";
+import VoiceAgentsList from "../../../src/commands/voice/agents/list.js";
 
 function ok(status: number, body: unknown) {
   return {
@@ -122,6 +133,9 @@ const AGENT: VoiceAgent = {
   object: "voice_agent",
   name: "Front desk",
   enabled: true,
+  kind: "sendly",
+  connection: null,
+  hasSigningSecret: false,
   voice: "ashley",
   voiceLabel: "Ashley (US, warm)",
   language: "en-US",
@@ -462,6 +476,17 @@ describe("voice command flags", () => {
     }
   });
 
+  it("agents create and update take --kind from the API's kinds and a --connection, and only update rotates the signing secret", () => {
+    for (const flags of [VoiceAgentsCreate.flags, VoiceAgentsUpdate.flags]) {
+      expect(flags.kind.options).toEqual([...VOICE_AGENT_KINDS]);
+      expect(flags.kind.default).toBeUndefined();
+      expect(flags.connection).toBeDefined();
+    }
+    expect(VOICE_AGENT_KINDS).toEqual(["sendly", "custom_llm", "sip", "websocket"]);
+    expect(VoiceAgentsUpdate.flags["rotate-signing-secret"].allowNo).toBeFalsy();
+    expect(VoiceAgentsCreate.flags).not.toHaveProperty("rotate-signing-secret");
+  });
+
   it("agents delete can skip its confirmation with --yes", () => {
     expect(VoiceAgentsDelete.flags.yes.char).toBe("y");
   });
@@ -719,5 +744,293 @@ describe("reportVoiceError", () => {
   it("leaves unrelated errors to the base command", () => {
     expect(reportVoiceError(new ApiError("unknown_error", "HTTP 418", 418))).toBe(false);
     expect(reportVoiceError(new Error("boom"))).toBe(false);
+  });
+});
+
+const SIGNING_SECRET = "whsec_example_0123456789abcdef";
+
+const WS_AGENT: VoiceAgent = {
+  ...AGENT,
+  name: "Stream",
+  kind: "websocket",
+  connection: {
+    url: "wss://agent.example.com/calls",
+    audioFormat: "pcm16_16000",
+    hasAuthToken: true,
+    customParameters: { tenant: "acme" },
+  },
+  hasSigningSecret: true,
+};
+
+describe("bring your own agent", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+    setOutputFormat("human");
+  });
+
+  afterEach(() => {
+    setOutputFormat("human");
+  });
+
+  it("sends kind, the connection as given and rotateSigningSecret only when asked", () => {
+    expect(
+      buildAgentBody({
+        kind: "custom_llm",
+        connection: { baseUrl: "https://llm.example.com/v1", model: "support-v2", apiKey: null },
+      }),
+    ).toEqual({
+      kind: "custom_llm",
+      connection: { baseUrl: "https://llm.example.com/v1", model: "support-v2", apiKey: null },
+    });
+    expect(buildAgentBody({ connection: { password: null } })).toEqual({
+      connection: { password: null },
+    });
+    expect(buildAgentBody({ "rotate-signing-secret": true })).toEqual({
+      rotateSigningSecret: true,
+    });
+    expect(buildAgentBody({ "rotate-signing-secret": false })).toEqual({});
+    expect(buildAgentBody({ name: "Front desk" })).not.toHaveProperty("kind");
+    expect(buildAgentBody({ name: "Front desk" })).not.toHaveProperty("connection");
+  });
+
+  it("parses --connection as a JSON object, inline or from @file", () => {
+    expect(parseConnectionFlag('{"uri":"sip:+15125550100@sip.example.com","password":null}')).toEqual({
+      uri: "sip:+15125550100@sip.example.com",
+      password: null,
+    });
+    expect(parseConnectionFlag("not json")).toMatch(/JSON object/);
+    expect(parseConnectionFlag("[1,2]")).toMatch(/JSON object/);
+    expect(parseConnectionFlag("null")).toMatch(/JSON object/);
+    expect(parseConnectionFlag('"wss://x"')).toMatch(/JSON object/);
+
+    const dir = mkdtempSync(join(tmpdir(), "sendly-cli-connection-"));
+    try {
+      const file = join(dir, "connection.json");
+      writeFileSync(file, '{"url":"wss://agent.example.com/calls","authToken":"example-token"}');
+      expect(parseConnectionFlag(`@${file}`)).toEqual({
+        url: "wss://agent.example.com/calls",
+        authToken: "example-token",
+      });
+      expect(parseConnectionFlag(`@${join(dir, "missing.json")}`)).toMatch(/Could not read/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("labels kinds and says which ones can place calls", () => {
+    expect(formatAgentKind("custom_llm")).toContain("chat completions endpoint");
+    expect(formatAgentKind("sip")).toContain("SIP address");
+    expect(formatAgentKind("websocket")).toContain("streamed");
+    expect(formatAgentKind("something_new")).toBe("something_new");
+    expect(canPlaceCalls("sendly")).toBe(true);
+    expect(canPlaceCalls("custom_llm")).toBe(true);
+    expect(canPlaceCalls("sip")).toBe(false);
+    expect(canPlaceCalls("websocket")).toBe(false);
+  });
+
+  it("shows the public connection fields of each kind and only whether secrets are saved", () => {
+    const llm = connectionRows({
+      kind: "custom_llm",
+      hasSigningSecret: true,
+      connection: {
+        baseUrl: "https://llm.example.com/v1",
+        model: "support-v2",
+        headerNames: ["X-Tenant"],
+        hasApiKey: true,
+      },
+    });
+    const llmMap = Object.fromEntries(llm);
+    expect(llmMap.Endpoint).toBe("https://llm.example.com/v1");
+    expect(llmMap.Model).toBe("support-v2");
+    expect(llmMap["API key"]).toContain("saved");
+    expect(llmMap["Extra headers"]).toContain("X-Tenant");
+    expect(llmMap["Signing secret"]).toContain("set");
+
+    const sip = Object.fromEntries(
+      connectionRows({
+        kind: "sip",
+        hasSigningSecret: true,
+        connection: {
+          uri: "sip:+15125550100@sip.example.com",
+          transport: "tls",
+          mediaEncryption: "require",
+          username: null,
+          hasPassword: false,
+          headers: { "X-Site": "austin" },
+        },
+      }),
+    );
+    expect(sip["SIP address"]).toBe("sip:+15125550100@sip.example.com");
+    expect(sip.Transport).toBe("tls");
+    expect(sip["Media encryption"]).toBe("require");
+    expect(sip.Password).toContain("none");
+    expect(sip["SIP headers"]).toBe("X-Site: austin");
+
+    const ws = Object.fromEntries(connectionRows(WS_AGENT));
+    expect(ws["WebSocket URL"]).toBe("wss://agent.example.com/calls");
+    expect(ws["Audio format"]).toBe("pcm16_16000");
+    expect(ws["Auth token"]).toContain("saved");
+    expect(ws["Custom parameters"]).toBe("tenant=acme");
+
+    expect(connectionRows(AGENT)).toEqual([]);
+  });
+
+  it("create sends --kind and --connection and prints the signing secret once with a save-it-now note", async () => {
+    mockFetch.mockResolvedValueOnce(
+      respond(201, { ...WS_AGENT, signingSecret: SIGNING_SECRET }),
+    );
+
+    const run = await runCommand(VoiceAgentsCreate, [
+      "--name",
+      "Stream",
+      "--kind",
+      "websocket",
+      "--connection",
+      '{"url":"wss://agent.example.com/calls","authToken":"example-token","customParameters":{"tenant":"acme"}}',
+    ]);
+
+    expect(run.exitCode).toBeUndefined();
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe("https://sendly.live/api/v1/voice/agents");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      name: "Stream",
+      kind: "websocket",
+      connection: {
+        url: "wss://agent.example.com/calls",
+        authToken: "example-token",
+        customParameters: { tenant: "acme" },
+      },
+    });
+    expect(run.stdout).toContain(SIGNING_SECRET);
+    expect(run.stdout).toMatch(/save it now, it is never shown again/);
+    expect(run.stdout).toContain("X-Sendly-Signature");
+    expect(run.stdout).not.toContain("sendly calls create");
+  });
+
+  it("create --json returns the signing secret in the response", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(201, { ...WS_AGENT, signingSecret: SIGNING_SECRET }),
+    );
+
+    const run = await runCommand(VoiceAgentsCreate, [
+      "--name",
+      "Stream",
+      "--kind",
+      "websocket",
+      "--connection",
+      '{"url":"wss://agent.example.com/calls"}',
+    ]);
+
+    expect(JSON.parse(run.stdout).signingSecret).toBe(SIGNING_SECRET);
+  });
+
+  it("create refuses a --connection that is not a JSON object before calling the API", async () => {
+    const run = await runCommand(VoiceAgentsCreate, [
+      "--name",
+      "Stream",
+      "--kind",
+      "websocket",
+      "--connection",
+      "wss://agent.example.com/calls",
+    ]);
+
+    expect(run.exitCode).toBe(1);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(run.stderr).toMatch(/JSON object/);
+  });
+
+  it("update --rotate-signing-secret sends only rotateSigningSecret: true and prints the new secret", async () => {
+    mockFetch.mockResolvedValueOnce(
+      respond(200, { ...WS_AGENT, signingSecret: SIGNING_SECRET }),
+    );
+
+    const run = await runCommand(VoiceAgentsUpdate, [AGENT_ID, "--rotate-signing-secret"]);
+
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe(`https://sendly.live/api/v1/voice/agents/${AGENT_ID}`);
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body)).toEqual({ rotateSigningSecret: true });
+    expect(run.stdout).toContain(SIGNING_SECRET);
+    expect(run.stdout).toMatch(/never shown again/);
+  });
+
+  it("update passes null in --connection through so a saved secret is removed", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, WS_AGENT));
+
+    const run = await runCommand(VoiceAgentsUpdate, [
+      AGENT_ID,
+      "--connection",
+      '{"authToken":null}',
+    ]);
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({
+      connection: { authToken: null },
+    });
+    expect(run.stdout).not.toMatch(/never shown again/);
+  });
+
+  it("get shows the kind and connection, list shows the kind", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, WS_AGENT));
+    const got = await runCommand(VoiceAgentsGet, [AGENT_ID]);
+    expect(got.stdout).toMatch(/Kind\s.*websocket/);
+    expect(got.stdout).toMatch(/WebSocket URL\s.*wss:\/\/agent\.example\.com\/calls/);
+    expect(got.stdout).toMatch(/Auth token\s.*saved/);
+    expect(got.stdout).toMatch(/Signing secret\s.*set/);
+
+    mockFetch.mockResolvedValueOnce(respond(200, { data: [AGENT, WS_AGENT] }));
+    const listed = await runCommand(VoiceAgentsList, []);
+    expect(listed.stdout).toContain("Kind");
+    expect(listed.stdout).toContain("websocket");
+    expect(listed.stdout).toContain("sendly");
+  });
+
+  it("explains byo_agents_not_enabled and a connection field the API refused", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(403, {
+        error: "byo_agents_not_enabled",
+        message: "Your own agents aren't switched on for this workspace. Contact support.",
+      }),
+    );
+    const off = await runCommand(VoiceAgentsCreate, [
+      "--name",
+      "Stream",
+      "--kind",
+      "websocket",
+      "--connection",
+      '{"url":"wss://agent.example.com/calls"}',
+    ]);
+    expect(off.exitCode).toBe(1);
+    const offOut = JSON.parse(off.stderr);
+    expect(offOut.code).toBe("byo_agents_not_enabled");
+    expect(offOut.hint).toContain("support@sendly.live");
+
+    mockFetch.mockResolvedValueOnce(
+      respond(400, {
+        error: "invalid_request",
+        message: "connection.url: must start with wss://",
+      }),
+    );
+    const bad = await runCommand(VoiceAgentsUpdate, [
+      AGENT_ID,
+      "--connection",
+      '{"url":"ws://agent.example.com"}',
+    ]);
+    expect(bad.exitCode).toBe(1);
+    const badOut = JSON.parse(bad.stderr);
+    expect(badOut.code).toBe("invalid_request");
+    expect(badOut.message).toBe("connection.url: must start with wss://");
+    expect(badOut.hint).toContain("--connection");
+
+    mockFetch.mockResolvedValueOnce(
+      respond(400, {
+        error: "invalid_request",
+        message: "rotateSigningSecret: Only your own agents have a signing secret.",
+      }),
+    );
+    const sendly = await runCommand(VoiceAgentsUpdate, [AGENT_ID, "--rotate-signing-secret"]);
+    expect(JSON.parse(sendly.stderr).hint).toContain("--kind");
   });
 });
