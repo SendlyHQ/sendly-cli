@@ -133,9 +133,40 @@ export interface DeletedVoiceAgent {
   deleted: true;
 }
 
+export type VoiceAgentTestOutcome =
+  | "ok"
+  | "blocked_destination"
+  | "unreachable"
+  | "timeout"
+  | "tls_failed"
+  | "auth_required"
+  | "auth_failed"
+  | "not_found"
+  | "rejected"
+  | "bad_reply"
+  | (string & {});
+
+export interface VoiceAgentTestStep {
+  step: "address" | "connect" | "login" | "reply" | (string & {});
+  ok: boolean;
+  detail: string;
+}
+
+export interface VoiceAgentTest {
+  ok: boolean;
+  outcome: VoiceAgentTestOutcome;
+  message: string;
+  status: number | null;
+  latencyMs: number | null;
+  signed: boolean;
+  steps: VoiceAgentTestStep[];
+}
+
 export const VOICE_MODES: readonly VoiceMode[] = ["none", "ring_dashboard", "agent"];
 
 export const VOICE_AGENT_KINDS = ["sendly", "custom_llm", "sip", "websocket"] as const;
+
+export const VOICE_AGENT_TEST_KINDS = ["custom_llm", "sip", "websocket"] as const;
 
 export const VOICE_NUMBERS_PATH = "/api/v1/voice/numbers";
 export const VOICE_AGENTS_PATH = "/api/v1/voice/agents";
@@ -153,6 +184,10 @@ export function voiceNumberEmergencyAddressPath(number: string): string {
 
 export function voiceAgentPath(id: string): string {
   return `${VOICE_AGENTS_PATH}/${encodeURIComponent(id)}`;
+}
+
+export function voiceAgentTestPath(id: string): string {
+  return `${voiceAgentPath(id)}/test`;
 }
 
 export interface NumberUpdateFlags {
@@ -237,6 +272,39 @@ export function buildAgentBody(flags: AgentFlags): Record<string, unknown> {
   if (flags.connection !== undefined) body.connection = flags.connection;
   if (flags["rotate-signing-secret"]) body.rotateSigningSecret = true;
   return body;
+}
+
+export interface AgentTestFlags {
+  kind?: string;
+  connection?: Record<string, unknown>;
+  instructions?: string;
+}
+
+export function buildAgentTestBody(flags: AgentTestFlags): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (flags.kind !== undefined) body.kind = flags.kind;
+  if (flags.connection !== undefined) body.connection = flags.connection;
+  if (flags.instructions !== undefined) body.instructions = flags.instructions;
+  return body;
+}
+
+export function agentTestLines(result: VoiceAgentTest): string[] {
+  const mark = (ok: boolean) => (ok ? colors.success("✓") : colors.error("✗"));
+  const lines = [`${mark(result.ok)} ${result.message}`];
+  const facts: string[] = [`outcome ${result.outcome}`];
+  if (result.status !== null && result.status !== undefined) facts.push(`status ${result.status}`);
+  if (result.latencyMs !== null && result.latencyMs !== undefined) facts.push(`${result.latencyMs} ms`);
+  facts.push(result.signed ? "signed" : "not signed");
+  lines.push(`  ${colors.dim(facts.join(" · "))}`);
+  const steps = Array.isArray(result.steps) ? result.steps : [];
+  if (steps.length > 0) {
+    const width = Math.max(...steps.map((s) => String(s.step).length));
+    lines.push("");
+    for (const s of steps) {
+      lines.push(`  ${mark(s.ok)} ${String(s.step).padEnd(width)}  ${s.detail}`);
+    }
+  }
+  return lines;
 }
 
 export function parseConnectionFlag(

@@ -1387,6 +1387,41 @@ Switching back to `--kind sendly` removes the connection and the secret. A
 connection the API refuses comes back as `400 invalid_request` naming the
 field, e.g. `connection.url: ...`.
 
+`voice agents test` reaches your own agent the way a call would, without
+placing one, and shows what happened at each step:
+
+```bash
+sendly voice agents test <agentId>
+
+# Try new settings before saving them; nothing is saved
+sendly voice agents test <agentId> \
+  --connection '{"uri":"sip:+15125550100@sip.example.com","transport":"tls"}'
+
+# Settings of another kind, e.g. on a sendly agent before switching it
+sendly voice agents test <agentId> --kind websocket --connection @connection.json
+```
+
+```
+✓ Your agent's server answered in 84 ms.
+  outcome ok · status 200 · 84 ms · not signed
+
+  ✓ address  sip.example.com points to a public server.
+  ✓ connect  Connected over TLS to sip.example.com:5061 in 41 ms.
+  ✓ reply    SIP 200 OK
+```
+
+A `custom_llm` agent gets a signed, streamed chat completion with a test message
+(`--instructions` sets the system prompt; the agent's own by default). A
+`websocket` agent gets a signed connection with a `start` marked `test: true`,
+about half a second of silence and a `stop` with reason `test_finished`. A `sip`
+agent gets an `OPTIONS` request, answered with the saved credentials if the
+server asks; an answer shows the address and credentials work, not which agent
+picks up. For the agent's own kind, a secret left out of `--connection` is taken
+from the saved one. A failed test prints `✗` and exits with status 1; `--json`
+prints the result (`ok`, `outcome`, `message`, `status`, `latencyMs`, `signed`,
+`steps`) either way. A workspace can run 10 tests a minute
+(`429 rate_limit_exceeded`).
+
 `--name` is capped at 80 characters, `--greeting` at 500 and `--instructions`
 at 4000; on `update`, `""` clears the greeting or instructions. An unknown
 `--voice` id falls back to the default voice and the command warns you.

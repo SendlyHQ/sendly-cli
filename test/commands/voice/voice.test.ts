@@ -44,11 +44,14 @@ import { respond, runCommand } from "../../helpers/run-command.js";
 import {
   VOICE_AGENTS_PATH,
   VOICE_AGENT_KINDS,
+  VOICE_AGENT_TEST_KINDS,
   VOICE_MODES,
   VOICE_NUMBERS_PATH,
   VOICE_VOICES_PATH,
+  agentTestLines,
   apiErrorCode,
   buildAgentBody,
+  buildAgentTestBody,
   buildEmergencyAddressBody,
   buildNumberUpdateBody,
   canPlaceCalls,
@@ -67,11 +70,13 @@ import {
   reportVoiceError,
   shellQuote,
   voiceAgentPath,
+  voiceAgentTestPath,
   voiceNumberEmergencyAddressPath,
   voiceNumberPath,
   type DeletedVoiceAgent,
   type Voice,
   type VoiceAgent,
+  type VoiceAgentTest,
   type VoiceListResponse,
   type VoiceNumber,
 } from "../../../src/lib/voice.js";
@@ -82,6 +87,7 @@ import VoiceAgentsUpdate from "../../../src/commands/voice/agents/update.js";
 import VoiceAgentsDelete from "../../../src/commands/voice/agents/delete.js";
 import VoiceAgentsGet from "../../../src/commands/voice/agents/get.js";
 import VoiceAgentsList from "../../../src/commands/voice/agents/list.js";
+import VoiceAgentsTest from "../../../src/commands/voice/agents/test.js";
 
 function ok(status: number, body: unknown) {
   return {
@@ -1032,5 +1038,189 @@ describe("bring your own agent", () => {
     );
     const sendly = await runCommand(VoiceAgentsUpdate, [AGENT_ID, "--rotate-signing-secret"]);
     expect(JSON.parse(sendly.stderr).hint).toContain("--kind");
+  });
+});
+
+describe("voice agents test", () => {
+  const PASSED: VoiceAgentTest = {
+    ok: true,
+    outcome: "ok",
+    message: "Your agent's server answered in 84 ms.",
+    status: 200,
+    latencyMs: 84,
+    signed: false,
+    steps: [
+      { step: "address", ok: true, detail: "sip.example.com points to a public server." },
+      { step: "connect", ok: true, detail: "Connected over TLS to sip.example.com:5061 in 41 ms." },
+      { step: "reply", ok: true, detail: "SIP 200 OK" },
+    ],
+  };
+
+  const FAILED: VoiceAgentTest = {
+    ok: false,
+    outcome: "auth_failed",
+    message: "Your endpoint refused the API key. Check the key and save it again.",
+    status: 401,
+    latencyMs: 120,
+    signed: true,
+    steps: [
+      { step: "address", ok: true, detail: "llm.example.com points to a public server." },
+      { step: "connect", ok: true, detail: "Connected to llm.example.com:443 in 30 ms." },
+      { step: "reply", ok: false, detail: "HTTP 401 Unauthorized" },
+    ],
+  };
+
+  beforeEach(() => {
+    mockFetch.mockReset();
+    setOutputFormat("human");
+  });
+
+  afterEach(() => {
+    setOutputFormat("human");
+  });
+
+  it("posts an empty body to the agent's test path with no idempotency key", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, PASSED));
+
+    const run = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+
+    expect(run.exitCode).toBeUndefined();
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe(`https://sendly.live/api/v1/voice/agents/${AGENT_ID}/test`);
+    expect(voiceAgentTestPath("a/b")).toBe("/api/v1/voice/agents/a%2Fb/test");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({});
+    expect(init.headers).not.toHaveProperty("Idempotency-Key");
+  });
+
+  it("sends --kind, --connection and --instructions exactly as given", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, PASSED));
+
+    await runCommand(VoiceAgentsTest, [
+      AGENT_ID,
+      "--kind",
+      "sip",
+      "--connection",
+      '{"uri":"sip:+15125550100@sip.example.com","transport":"tls","password":"s3cret"}',
+      "--instructions",
+      "You are the front desk at Acme.",
+    ]);
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({
+      kind: "sip",
+      connection: { uri: "sip:+15125550100@sip.example.com", transport: "tls", password: "s3cret" },
+      instructions: "You are the front desk at Acme.",
+    });
+    expect(buildAgentTestBody({})).toEqual({});
+    expect(buildAgentTestBody({ instructions: "" })).toEqual({ instructions: "" });
+  });
+
+  it("takes only your own kinds for --kind", () => {
+    expect(VoiceAgentsTest.flags.kind.options).toEqual([...VOICE_AGENT_TEST_KINDS]);
+    expect(VOICE_AGENT_TEST_KINDS).toEqual(["custom_llm", "sip", "websocket"]);
+    expect(VoiceAgentsTest.flags.connection).toBeDefined();
+    expect(VoiceAgentsTest.flags.instructions).toBeDefined();
+  });
+
+  it("prints a check line with the message, then each step, and exits 0 when the test passed", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, PASSED));
+
+    const run = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+
+    expect(run.exitCode).toBeUndefined();
+    const lines = run.stdout.split("\n");
+    expect(lines[0]).toContain("✓");
+    expect(lines[0]).toContain("Your agent's server answered in 84 ms.");
+    expect(run.stdout).toMatch(/outcome ok/);
+    expect(run.stdout).toMatch(/84 ms/);
+    expect(run.stdout).toMatch(/address\s+sip\.example\.com points to a public server\./);
+    expect(run.stdout).toMatch(/reply\s+SIP 200 OK/);
+  });
+
+  it("prints a cross line and exits 1 when the test failed", async () => {
+    mockFetch.mockResolvedValueOnce(respond(200, FAILED));
+
+    const run = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+
+    expect(run.exitCode).toBe(1);
+    const lines = run.stdout.split("\n");
+    expect(lines[0]).toContain("✗");
+    expect(lines[0]).toContain("Your endpoint refused the API key.");
+    expect(run.stdout).toMatch(/outcome auth_failed/);
+    expect(run.stdout).toMatch(/✗ reply\s+HTTP 401 Unauthorized/);
+  });
+
+  it("prints the result as JSON with --json and still exits 1 on a failed test", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(respond(200, PASSED));
+    const passed = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+    expect(passed.exitCode).toBeUndefined();
+    expect(JSON.parse(passed.stdout)).toEqual(PASSED);
+
+    mockFetch.mockResolvedValueOnce(respond(200, FAILED));
+    const failed = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+    expect(failed.exitCode).toBe(1);
+    expect(JSON.parse(failed.stdout)).toEqual(FAILED);
+  });
+
+  it("shows an outcome and step it doesn't know as they came", () => {
+    const lines = agentTestLines({
+      ...FAILED,
+      outcome: "dns_flapping",
+      status: null,
+      latencyMs: null,
+      steps: [{ step: "handshake", ok: false, detail: "No answer." }],
+    }).join("\n");
+    expect(lines).toContain("outcome dns_flapping");
+    expect(lines).toMatch(/handshake\s+No answer\./);
+    expect(lines).not.toContain("null");
+  });
+
+  it("refuses a --connection that is not a JSON object before calling the API", async () => {
+    const run = await runCommand(VoiceAgentsTest, [AGENT_ID, "--connection", "sip:a@sip.example.com"]);
+
+    expect(run.exitCode).toBe(1);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(run.stderr).toMatch(/JSON object/);
+  });
+
+  it("explains the rate limit, a sendly agent without --kind and a missing agent", async () => {
+    setOutputFormat("json");
+    mockFetch.mockResolvedValueOnce(
+      respond(429, {
+        error: "rate_limit_exceeded",
+        message: "You can run 10 connection tests a minute. Try again shortly.",
+      }),
+    );
+    const limited = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+    expect(limited.exitCode).toBe(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const limitedOut = JSON.parse(limited.stderr);
+    expect(limitedOut.code).toBe("rate_limit_exceeded");
+    expect(limitedOut.hint).toContain("10 tests a minute");
+
+    mockFetch.mockResolvedValueOnce(
+      respond(400, {
+        error: "invalid_request",
+        message: "kind: This agent is a sendly agent; pass kind and connection to test your own agent's settings.",
+      }),
+    );
+    const sendly = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+    expect(sendly.exitCode).toBe(1);
+    expect(JSON.parse(sendly.stderr).hint).toContain("--kind");
+
+    mockFetch.mockResolvedValueOnce(
+      respond(404, { error: "agent_not_found", message: "That agent doesn't exist in this workspace." }),
+    );
+    const missing = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+    expect(missing.exitCode).toBe(1);
+    expect(JSON.parse(missing.stderr).code).toBe("agent_not_found");
+
+    mockFetch.mockResolvedValueOnce(
+      respond(403, { error: "byo_agents_not_enabled", message: "Your own agents aren't switched on for this workspace." }),
+    );
+    const off = await runCommand(VoiceAgentsTest, [AGENT_ID]);
+    expect(off.exitCode).toBe(1);
+    expect(JSON.parse(off.stderr).hint).toContain("support@sendly.live");
   });
 });
